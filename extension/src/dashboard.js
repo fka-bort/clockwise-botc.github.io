@@ -1057,10 +1057,10 @@ function awardTiles(base) {
   };
   const fit = (p) => `<span style="font-size:${Math.min(1, 11 / Math.max(1, [...p.name].length)).toFixed(2)}em">${playerLink(p.key, p.name)}</span>`;
   const info = (text) => ` <span class="info" data-tip="${esc(text)}" aria-label="${esc(text)}">ⓘ</span>`;
-  const hound = best('good', 'enemyExecs'), framer = best('evil', 'enemyExecs'), survivor = best('all', 'survived');
+  const detective = best('good', 'enemyExecs'), framer = best('evil', 'enemyExecs'), survivor = best('all', 'survived');
   const out = [];
-  if (hound && hound.t.enemyExecs) out.push(tile(`Top hound dog${info('As good: the most evil players executed from their nominations, per game (5+ games as good).')}`, fit(hound),
-    `${plural(hound.t.enemyExecs, 'evil player')} executed from ${plural(hound.t.noms, 'nomination')} in ${plural(hound.t.tracked, 'game')}`, 'award'));
+  if (detective && detective.t.enemyExecs) out.push(tile(`Top detective${info('As good: the most evil players executed from their nominations, per game (5+ games as good).')}`, fit(detective),
+    `${plural(detective.t.enemyExecs, 'evil player')} executed from ${plural(detective.t.noms, 'nomination')} in ${plural(detective.t.tracked, 'game')}`, 'award'));
   if (framer && framer.t.enemyExecs) out.push(tile(`Top framer${info('As evil: the most good players executed from their nominations, per game (3+ games as evil).')}`, fit(framer),
     `${plural(framer.t.enemyExecs, 'good player')} executed from ${plural(framer.t.noms, 'nomination')} in ${plural(framer.t.tracked, 'game')}`, 'award'));
   if (survivor) { const alive = survivor.t.fates.survivedWon + survivor.t.fates.survivedLost;
