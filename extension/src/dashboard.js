@@ -5,7 +5,8 @@ import { communityConfig, communityName, gameCommunity, NONE, DEFAULTS } from '.
 import { esc, pct, cap, plural, fmtDate, fmtTime, phaseLabel, teamLabel, teamOne, asType, isEvilTeam, playerLink as uiPlayerLink, charLink, typeLink, rateCell, delta, splitBars, legendGE, tile, card, table, pie, rings, rangeBar, fitted } from './ui.js';
 import { renderData, handleDataClick, handleImport } from './dataview.js';
 import { playstylesView, STYLE_SIDES } from './playstylesview.js';
-import { tableTalk, nominationPairs, MEASURES, MIN_GAMES as TALK_MIN } from './tabletalk.js';
+import { tableTalk, nominationPairs, MEASURES } from './tabletalk.js';
+import { talkCell, talkChartCard } from './tabletalkview.js';
 import { renderGrimoire } from './grimoire.js';
 import { makeImages } from './images.js';
 import { characterToken, installTokenStyle } from './tokens.js';
@@ -29,6 +30,7 @@ const prefs = (() => { try { return JSON.parse(localStorage.getItem('dash.prefs'
 const state = {
   tab: readTab(),
   styleSide: readSide(), // Playstyles tab: good, evil or all games
+  talkView: { measure: 'loud', side: 'all' }, // main page's At the table chart
   filters: { communities: Array.isArray(prefs.communities) ? prefs.communities : [], script: '', storyteller: '', days: '' },
   sel: readHash(),
   expanded: new Set(),
@@ -393,6 +395,7 @@ function overallSections(base) {
     ${gamesCards.balance(base)}
     ${gamesCards.playerCount(base)}
     ${gamesCards.players(base)}
+    ${talkChartCard(talk(base), state.talkView.measure, state.talkView.side, { playerLink, selected: state.sel.players })}
     ${st ? storytellerCompareCard(nameOf(st), base, others) : gamesCards.storytellers(base)}
     ${gamesCards.scripts(base)}
     ${gamesCards.counts(base)}
@@ -633,35 +636,16 @@ function talk(base) {
   if (talkCache.games !== base) talkCache = { games: base, out: tableTalk(base) };
   return talkCache.out;
 }
-// How each measure's percentile reads ("louder than 82% of players").
-const TALK_WORDS = { loud: 'nominates more than', nominated: 'nominated more than', voter: 'votes more than', life: 'lives longer than' };
-const TALK_UNITS = {
-  loud: (t) => `${t.made} nominations in ${plural(t.days, 'day')} alive`,
-  nominated: (t) => `nominated ${t.received} times in ${plural(t.days, 'day')} alive`,
-  voter: (t) => `voted on ${t.votes} of ${plural(t.chances, 'nomination')} while alive`,
-  life: (t) => `alive for ${Math.round((t.life / (t.games || 1)) * 100)}% of the days, on average, over ${plural(t.games, 'game')}`,
-};
-function talkCell(side, pl, id, sideWord = '') {
-  if (!pl || !pl.t.games) return '<span class="muted">–</span>';
-  const r = pl.rates[id], m = MEASURES[id], p = pl.pct[id];
-  const of = side.ranked;
-  const tip = `${MEASURES[id].label}${sideWord ? ` ${sideWord}` : ''}: ${m.fmt(r.value)}\n${TALK_UNITS[id](pl.t)}`
-    + (p === null ? `\nNot ranked: needs ${plural(side.minGames, 'game')}` : `\n${cap(TALK_WORDS[id])} ${Math.round(p * 100)}% of the ${of} players with ${side.minGames}+ games`)
-    + '\n(pulled slightly toward the average when there\'s little data)';
-  return `<div class="tt-cell" data-tip="${esc(tip)}"><b>${m.fmt(r.value)}</b>${p === null ? '<span class="muted small">not ranked yet</span>'
-    : `<div class="meter"><i style="width:${Math.max(p * 100, 1)}%"></i></div><span class="small">${TALK_WORDS[id]} ${Math.round(p * 100)}%</span>`}</div>`;
-}
 function talkCard(base, key) {
   const T = talk(base);
   const find = (side) => T[side].players.find((p) => p.key === key);
-  const rows = Object.keys(MEASURES).map((id) => `<tr><td>${esc(MEASURES[id].label)}</td>${['all', 'good', 'evil'].map((side) => `<td>${talkCell(T[side], find(side), id, side === 'all' ? '' : `as ${side}`)}</td>`).join('')}</tr>`).join('');
+  const rows = Object.keys(MEASURES).map((id) => `<tr><td>${esc(MEASURES[id].label)}</td>${['all', 'good', 'evil'].map((side) => `<td>${talkCell(T[side], find(side), id, side)}</td>`).join('')}</tr>`).join('');
   const me = find('all');
   if (!me) return '';
   const steadyNote = 'As good / as evil only count games where they kept one alignment the whole game.';
-  return card('At the table', `Per day alive, ranked against everyone with enough games (${MIN_TALK()}). ${steadyNote} Only games recorded from the start count. Hover for the counts.`,
+  return card('At the table', `Per day alive, next to the average player in the same games (overall, as good, as evil). ${steadyNote} Only games recorded from the start count. Hover for the counts.`,
     `<div class="table-wrap"><table class="tt"><thead><tr><th></th><th>Overall</th><th>As good</th><th>As evil</th></tr></thead><tbody>${rows}</tbody></table></div>`, 'wide');
 }
-const MIN_TALK = () => `${TALK_MIN.all} games overall, ${TALK_MIN.good} per side`;
 function pairsCards(base, key) {
   const { nominates, nominatedBy } = nominationPairs(base, key);
   const cols = (who) => [colPlayer(who), colNum('Nominations', (r) => r.n), colNum('Games together', (r) => r.games)];
@@ -1499,6 +1483,11 @@ document.addEventListener('toggle', (e) => {
 
 document.addEventListener('change', async (e) => {
   const t = e.target;
+  if (t.dataset.talkMeasure !== undefined || t.dataset.talkSide !== undefined) {
+    if (t.dataset.talkMeasure !== undefined) state.talkView.measure = t.value; else state.talkView.side = t.value;
+    render();
+    return;
+  }
   if (t.dataset.filter) {
     state.filters[t.dataset.filter] = t.type === 'checkbox' ? t.checked : t.value;
     if (t.dataset.filter === 'community') savePrefs();

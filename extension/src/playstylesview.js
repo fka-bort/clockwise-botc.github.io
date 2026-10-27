@@ -146,10 +146,10 @@ function nominationsCard(R, h) {
 // Everyone ranked on the same four measures as the player page, for the side picked at the top.
 function talkTable(side, h) {
   const T = h.talk[side];
-  const rows = T.players.filter((p) => p.ranked);
+  const rows = T.players.filter((p) => p.listed);
   const sideWord = side === 'all' ? '' : `as ${side}`;
-  const col = (id, label) => ({ label, value: (p) => p.rates[id].value, cell: (p) => `<td>${h.talkCell(T, p, id, sideWord)}</td>` });
-  const sub = `Per day alive, for players with ${T.minGames}+ games${sideWord ? ` ${sideWord}` : ''}${side === 'all' ? '' : ' (only games where they kept one alignment the whole game)'}. Each bar is their rank among these ${T.ranked} players. Click a column to sort.`;
+  const col = (id, label) => ({ label, value: (p) => p.rates[id].value, cell: (p) => `<td>${h.talkCell(T, p, id, side)}</td>` });
+  const sub = `Per day alive, next to the average player, for players with ${T.minGames}+ games${sideWord ? ` ${sideWord}` : ''}${side === 'all' ? '' : ' (only games where they kept one alignment the whole game)'}. Click a column to sort.`;
   return card('At the table', sub, h.sortable(`ps-talk-${side}`, [h.colPlayer(), h.colNum('Games', (p) => p.games),
     col('loud', 'Nominations / day'), col('nominated', 'Nominated / day'), col('voter', 'Votes while alive'), col('life', 'Share of game alive')], rows, { sort: 2, empty: 'Not enough games yet.' }), 'wide');
 }

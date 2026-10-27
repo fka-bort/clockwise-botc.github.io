@@ -12,7 +12,8 @@
 // side (a Scarlet Woman becoming the Imp) still counts; a Snake Charmer swap or a Pit-Hag turning them evil doesn't.
 //
 // Rates are pulled toward the table-wide rate by a few pretend days/votes/games (SHRINK), so players with little data
-// don't top or bottom the rankings by luck. Percentiles compare each player with everyone with enough games.
+// don't look extreme by luck. Each rate is shown next to the table-wide average for the same games and side, as a gap
+// (percentiles exaggerate tiny differences when most players sit close together).
 
 import { playerKey, displayName } from './stats.js';
 import { ALL_CHARACTERS } from './characters.js';
@@ -76,19 +77,28 @@ function add(t, r) {
   t.games++; t.days += r.days; t.made += r.made; t.received += r.received; t.votes += r.votes; t.chances += r.chances;
   t.life += r.days / r.gameDays;
 }
-// The measures, each as [count, exposure, kind of shrinkage].
+// The measures: how to get [count, exposure] from a tally, how much to shrink, and how to show values and gaps.
+const perDay = { fmt: (v) => v.toFixed(2), gap: (d) => d.toFixed(2), unit: '' };
+const share = { fmt: (v) => `${Math.round(v * 100)}%`, gap: (d) => (Math.round(d * 100) === 1 ? '1 pt' : `${Math.round(d * 100)} pts`), unit: '' };
 export const MEASURES = {
-  loud: { label: 'Nominations per day alive', get: (t) => [t.made, t.days], shrink: SHRINK.perDay, fmt: (v) => v.toFixed(2) },
-  nominated: { label: 'Times nominated per day alive', get: (t) => [t.received, t.days], shrink: SHRINK.perDay, fmt: (v) => v.toFixed(2) },
-  voter: { label: 'Votes on nominations while alive', get: (t) => [t.votes, t.chances], shrink: SHRINK.votes, fmt: (v) => `${Math.round(v * 100)}%` },
-  life: { label: 'Share of the game alive', get: (t) => [t.life, t.games], shrink: SHRINK.life, fmt: (v) => `${Math.round(v * 100)}%` },
+  loud: { label: 'Nominations per day alive', get: (t) => [t.made, t.days], shrink: SHRINK.perDay, ...perDay,
+    counts: (t) => `${t.made} nominations in ${t.days} days alive` },
+  nominated: { label: 'Times nominated per day alive', get: (t) => [t.received, t.days], shrink: SHRINK.perDay, ...perDay,
+    counts: (t) => `nominated ${t.received} times in ${t.days} days alive` },
+  voter: { label: 'Votes on nominations while alive', get: (t) => [t.votes, t.chances], shrink: SHRINK.votes, ...share,
+    counts: (t) => `voted on ${t.votes} of ${t.chances} nominations while alive` },
+  life: { label: 'Share of the game alive', get: (t) => [t.life, t.games], shrink: SHRINK.life, ...share,
+    counts: (t) => `alive for ${Math.round((t.life / (t.games || 1)) * 100)}% of the days on average, over ${t.games} games` },
 };
+// The gap as shown, rounded the way the values are, so "0.35 vs. 0.35" never reads as a gap.
+export function gapOf(id, value, avg) {
+  const m = MEASURES[id];
+  const shown = Number(m.fmt(value).replace('%', '')) - Number(m.fmt(avg).replace('%', ''));
+  return { d: value - avg, shown, about: shown === 0 };
+}
 
-// Share of `others` below v (ties count half), as 0–1.
-const percentile = (v, others) => (others.length ? (others.filter((o) => o < v).length + 0.5 * others.filter((o) => o === v).length) / others.length : null);
-
-// For each side ('all', 'good', 'evil'): every player's totals, raw and shrunk rates, and percentiles among players
-// with enough games on that side.
+// For each side ('all', 'good', 'evil'): every player's totals, raw and shrunk rates and gap from the table average.
+// `listed`: has enough games on that side to be shown in the all-player chart and table.
 export function tableTalk(games) {
   const recs = seatRecords(games);
   const out = {};
@@ -105,19 +115,12 @@ export function tableTalk(games) {
       const rates = {};
       for (const [id, m] of Object.entries(MEASURES)) {
         const [c, n] = m.get(pl.t);
-        rates[id] = { raw: n ? c / n : null, n, value: table[id] === null ? null : (c + m.shrink * table[id]) / (n + m.shrink) };
+        const value = table[id] === null ? null : (c + m.shrink * table[id]) / (n + m.shrink);
+        rates[id] = { raw: n ? c / n : null, n, value, gap: value === null ? null : gapOf(id, value, table[id]) };
       }
-      return { ...pl, games: pl.t.games, rates, ranked: pl.t.games >= MIN_GAMES[side] };
+      return { ...pl, games: pl.t.games, rates, listed: pl.t.games >= MIN_GAMES[side] };
     });
-    const ranked = players.filter((p) => p.ranked);
-    for (const pl of players) {
-      pl.pct = {};
-      for (const id of Object.keys(MEASURES)) {
-        const others = ranked.filter((o) => o !== pl).map((o) => o.rates[id].value);
-        pl.pct[id] = pl.ranked && pl.rates[id].value !== null ? percentile(pl.rates[id].value, others) : null;
-      }
-    }
-    out[side] = { players: players.sort((a, b) => b.games - a.games || a.name.localeCompare(b.name)), table, ranked: ranked.length, minGames: MIN_GAMES[side] };
+    out[side] = { players: players.sort((a, b) => b.games - a.games || a.name.localeCompare(b.name)), table, listed: players.filter((p) => p.listed).length, minGames: MIN_GAMES[side], seats: pooled.games };
   }
   return out;
 }
