@@ -3,7 +3,7 @@
 //
 // Every seat in every game gets one "fate" (FATES below) from its death phase, the deaths and the nominations. Each
 // player's rates on one side (as good, as evil, or both) are also pulled toward the table-wide rate by SHRINK pretend
-// games, so the spotlight on the Playstyles tab can't go to someone with a lucky handful of games.
+// games, so the awards on the main page can't go to someone with a lucky handful of games.
 
 import { playerKey, displayName } from './stats.js';
 

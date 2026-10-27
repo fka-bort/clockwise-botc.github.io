@@ -45,13 +45,14 @@ The character, alignment and winner data comes from the end-of-game reveal, whic
 
 The look follows the Mayor-Baron Type Indicator: warm parchment, cream cards with large rounded corners, and plum text, with Fraunces titles and Figtree text (both bundled, so it works offline). Good is shown in its Townsfolk blue and evil in its Minion rust. Tabs sit in a pill bar at the top right, and the filters sit in one row in the same pill style. Once you set a filter, a short summary of what you are looking at appears above the row of cards, with the most interesting card highlighted in mauve. It fills the window up to 1440px wide and stays centered on bigger screens. It uses a dark theme by default, on a tiled purple texture that runs behind the header too. Click the Clockwise logo to go back to the main page.
 
-The dashboard has four tabs: **Stats** (the default), **Playstyles**, **Games** and **Data & settings**.
+The dashboard has three tabs: **Stats** (the default), **Games** and **Data & settings**.
 
 ### Stats
 
 The Stats tab is a single page that adapts to what you select. With nothing selected (or just a community), it shows the overall picture:
 
 - **Totals:** the number of games, the average game length, and a spotlight on the player with the highest win rate. Only players with at least 5 games (or 10% of all games) count. It's a single highlight, not a ranking, so nobody is singled out for a low win rate.
+- **Awards:** the **top hound dog** (as good, the most evil players executed from their nominations per game; 5+ games as good), the **top framer** (as evil, the most good players executed from their nominations per game; 3+ games as evil) and the **best survivor** (alive at the end of the most games; 5+ games). Each rate is pulled toward the average as if the player had 5 extra average games, so a lucky handful of games can't win. Only games recorded from the start count for the nomination awards.
 - **Game balance:** a pie chart of good vs. evil wins, with a one-line verdict such as "Games look balanced between both teams."
 - **Player count:** a pie chart of how many players sat down. Lighter slices mean smaller tables, and every size is listed underneath with its number of games.
 - **Most frequent players** and **most frequent storytellers:** the top 5 of each, by number of games.
@@ -78,14 +79,6 @@ Pick anything to focus the page on it. Every name on the page is clickable and a
   - A character plus a type shows that type in games with the character, e.g. *Outsiders when the Baron is in play*.
 
 Every table can be sorted: click a column label to sort by it (▼), click it again to flip the order (▲), or click another column to sort by that instead. The **Community** buttons at the top start with neither on, which shows every recorded game. Turn on Escape, Rhap or both to see only those games. The dashboard remembers your choice. The script, storyteller and period filters narrow everything too. **See these games →** at the bottom jumps to the matching games. The tab and selection are saved in the page address, so you can bookmark a view.
-
-### Playstyles
-
-The Playstyles tab looks at everyone at once, as good, as evil or across all games (toggle at the top right). The script, storyteller, period and community filters apply.
-
-- **At the table:** everyone with enough games (5, or 3 per side) on the same four measures as the player page (nominations, times nominated, voting and time alive, per day alive), next to the average.
-- **How their games end:** every seat gets one fate: killed early (at night or by an ability, by the end of Day 2), executed early (Day 1 or 2), died later on, executed on the final day (as good in a game evil won, that's the frame), survived and lost, or survived and won. Each player's mix is a bar, with everyone's mix on top, early exits first.
-- **Hound dogs / Framers:** whose nominations get the other team executed, plus (as good) how often their nominations and votes land on evil. Only games recorded from the start count here.
 
 ### Games
 
@@ -161,8 +154,7 @@ extension/
   src/communities.js   which community a room/game belongs to
   src/stats.js         filters and overall win-rate calculations
   src/insights.js      stats for any selection of players / characters / types, and the prediction model
-  src/playstyles.js    how each player's games end, and whose nominations get the other team executed
-  src/playstylesview.js  the Playstyles tab
+  src/playstyles.js    how each player's games end, and whose nominations get the other team executed (the awards)
   src/tabletalk.js     per-day-alive nominations, votes and survival next to the average; who nominates whom
   src/tabletalkview.js the At the table chart and cells
   src/ui.js            shared HTML helpers

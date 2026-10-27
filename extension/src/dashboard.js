@@ -4,7 +4,7 @@ import { TYPES, emptySelection, hasSelection, selectGames, holds, focusSeats, ou
 import { communityConfig, communityName, gameCommunity, NONE, DEFAULTS } from './communities.js';
 import { esc, pct, cap, plural, fmtDate, fmtTime, phaseLabel, teamLabel, teamOne, asType, isEvilTeam, playerLink as uiPlayerLink, charLink, typeLink, rateCell, delta, splitBars, legendGE, tile, card, table, pie, rings, rangeBar, fitted } from './ui.js';
 import { renderData, handleDataClick, handleImport } from './dataview.js';
-import { playstylesView, STYLE_SIDES } from './playstylesview.js';
+import { playstyles } from './playstyles.js';
 import { tableTalk, nominationPairs, votePairs, MEASURES } from './tabletalk.js';
 import { talkCell, talkChartCard, talkChartBody, talkChartNote, talkChartSub } from './tabletalkview.js';
 import { renderGrimoire } from './grimoire.js';
@@ -25,11 +25,10 @@ const api = {
 };
 
 // ---------- state ----------
-const TABS = ['stats', 'styles', 'games', 'data'];
+const TABS = ['stats', 'games', 'data'];
 const prefs = (() => { try { return JSON.parse(localStorage.getItem('dash.prefs')) || {}; } catch { return {}; } })();
 const state = {
   tab: readTab(),
-  styleSide: readSide(), // Playstyles tab: good, evil or all games
   talkView: { measure: 'loud', side: 'all', added: [] }, // main page's At the table chart: measure, games, players added by hand
   filters: { communities: Array.isArray(prefs.communities) ? prefs.communities : [], script: '', storyteller: '', days: '' },
   sel: readHash(),
@@ -86,10 +85,6 @@ function readTab() {
   const t = new URLSearchParams(location.hash.slice(1)).get('tab');
   return TABS.includes(t) ? t : 'stats';
 }
-function readSide() {
-  const s = new URLSearchParams(location.hash.slice(1)).get('side');
-  return STYLE_SIDES.some(([v]) => v === s) ? s : 'good';
-}
 function readHash() {
   const sel = emptySelection();
   const params = new URLSearchParams(location.hash.slice(1));
@@ -99,7 +94,6 @@ function readHash() {
 function writeHash() {
   const params = new URLSearchParams();
   if (state.tab !== 'stats') params.set('tab', state.tab);
-  if (state.tab === 'styles' && state.styleSide !== 'good') params.set('side', state.styleSide);
   for (const [k, v] of Object.entries(state.sel)) if (v.length) params.set(k, v.join(','));
   history.replaceState(null, '', params.toString() ? `#${params}` : location.pathname);
 }
@@ -630,7 +624,7 @@ function heldSections(G, sel, seats, base) {
 }
 
 // ---------- at the table (per day alive, with percentiles) ----------
-// Worked out once per set of games: the player page and the Playstyles tab both use it.
+// Worked out once per set of games: the main page's chart and the player page both use it.
 let talkCache = { games: null, out: null };
 function talk(base) {
   if (talkCache.games !== base) talkCache = { games: base, out: tableTalk(base) };
@@ -1047,12 +1041,27 @@ function gamesView() {
   return `${summaryLine(G, base, state.sel)}${G.length ? gamesList(G) : '<div class="card empty"><h2>No games match</h2><p>Try removing a filter.</p></div>'}`;
 }
 
-// Playstyles: every player in the filtered games. The player, character and type pickers don't apply (they're hidden
-// on this tab).
-function stylesView() {
-  if (!state.games.length) return noGames();
-  const base = baseGames();
-  return playstylesView(base, { side: state.styleSide, playerLink, sortable, colPlayer, colNum, colRate, talk: talk(base), talkCell });
+// Awards on the main page: whose nominations get the most evil players executed (as good), the most good players
+// executed (as evil), and who most often survives to the end. Each rate is pulled toward the table-wide rate as if the
+// player had 5 extra average games, so a lucky handful of games can't win; it needs 5 games as good, 3 as evil or 5
+// overall. Only games recorded from the start count for the nomination awards.
+function awardTiles(base) {
+  const best = (side, id) => {
+    const R = playstyles(base, side);
+    if (!R.featureIds.includes(id) || !R.players.length) return null;
+    return [...R.players].sort((a, b) => b.values[id].shrunk - a.values[id].shrunk)[0];
+  };
+  const fit = (p) => `<span style="font-size:${Math.min(1, 11 / Math.max(1, [...p.name].length)).toFixed(2)}em">${playerLink(p.key, p.name)}</span>`;
+  const info = (text) => ` <span class="info" data-tip="${esc(text)}" aria-label="${esc(text)}">ⓘ</span>`;
+  const hound = best('good', 'enemyExecs'), framer = best('evil', 'enemyExecs'), survivor = best('all', 'survived');
+  const out = [];
+  if (hound && hound.t.enemyExecs) out.push(tile(`Top hound dog${info('As good: the most evil players executed from their nominations, per game (5+ games as good).')}`, fit(hound),
+    `${plural(hound.t.enemyExecs, 'evil player')} executed from ${plural(hound.t.noms, 'nomination')} in ${plural(hound.t.tracked, 'game')}`, 'award'));
+  if (framer && framer.t.enemyExecs) out.push(tile(`Top framer${info('As evil: the most good players executed from their nominations, per game (3+ games as evil).')}`, fit(framer),
+    `${plural(framer.t.enemyExecs, 'good player')} executed from ${plural(framer.t.noms, 'nomination')} in ${plural(framer.t.tracked, 'game')}`, 'award'));
+  if (survivor) { const alive = survivor.t.fates.survivedWon + survivor.t.fates.survivedLost;
+    out.push(tile(`Best survivor${info('Alive at the end of the most games (5+ games).')}`, fit(survivor), `alive at the end of ${alive} of ${plural(survivor.t.known, 'game')}`, 'award')); }
+  return out.length ? `<div class="tiles awards">${out.join('')}</div>` : '';
 }
 
 function statsView() {
@@ -1132,7 +1141,8 @@ function statsView() {
   const more = G.length ? `<p class="see-games"><button class="btn" data-tab="games">See ${G.length === 1 ? 'this game' : `these ${G.length} games`} →</button></p>` : '';
   // With no filters the Games tile already says how many games there are, so the line would only repeat it.
   const lead = anyFilter(sel) ? summaryLine(G, base, sel).replace('class="summary"', 'class="summary lead"') : '';
-  return `${lead}<div class="tiles">${tiles.join('')}</div>${sections}${more}`;
+  const awards = !hasSelection(sel) && G.length ? awardTiles(base) : '';
+  return `${lead}<div class="tiles">${tiles.join('')}</div>${awards}${sections}${more}`;
 }
 
 // ---------- filters & dropdowns ----------
@@ -1208,8 +1218,7 @@ function render() {
   if (gate) { $('#filters').hidden = true; $('#view').innerHTML = signInView(); return; }
   document.querySelectorAll('[data-tab]').forEach((b) => { if (b.closest('.tabs')) b.setAttribute('aria-selected', String(b.dataset.tab === state.tab)); });
   $('#filters').hidden = state.tab === 'data';
-  document.body.classList.toggle('tab-styles', state.tab === 'styles');
-  const views = { stats: statsView, styles: stylesView, games: gamesView, data: () => renderData(ctx, selectGames(baseGames(), state.sel)) };
+  const views = { stats: statsView, games: gamesView, data: () => renderData(ctx, selectGames(baseGames(), state.sel)) };
   keepOpenForms(() => { $('#view').innerHTML = (state.tab !== 'data' ? connectCard() : '') + views[state.tab](); });
   // Editors' account list loads the first time Data & settings is opened.
   mountClaimPicker();
@@ -1457,9 +1466,8 @@ async function updateLocal(id, patch, resend) {
 
 // ---------- events ----------
 document.addEventListener('click', async (e) => {
-  const t = e.target.closest('[data-gview],[data-gmenu],[data-sort-table],[data-filter-community],[data-game-community],[data-add-player],[data-add-char],[data-add-type],[data-expand],[data-more-games],[data-delete],[data-action],[data-export],[data-clear-room],[data-fallback],[data-tab],[data-style-side],#clear-sel');
+  const t = e.target.closest('[data-gview],[data-gmenu],[data-sort-table],[data-filter-community],[data-game-community],[data-add-player],[data-add-char],[data-add-type],[data-expand],[data-more-games],[data-delete],[data-action],[data-export],[data-clear-room],[data-fallback],[data-tab],#clear-sel');
   if (!t) return;
-  if (t.dataset.styleSide) { state.styleSide = t.dataset.styleSide; writeHash(); render(); return; }
   // Under an open game: switch between seat-by-seat and nominations, or show the settings. No full redraw,
   // so the grimoire stays put.
   // The settings take the place of the table; picking a tab puts the table back.
@@ -1583,7 +1591,7 @@ document.addEventListener('mousemove', (e) => {
   tip.style.top = `${y}px`;
 });
 
-window.addEventListener('hashchange', () => { state.sel = readHash(); state.tab = readTab(); state.styleSide = readSide(); renderPickers(); render(); });
+window.addEventListener('hashchange', () => { state.sel = readHash(); state.tab = readTab(); renderPickers(); render(); });
 
 // Make sure botc.app's image list is available (fetched in the background if missing or a day old);
 // the dashboard re-renders when it arrives.

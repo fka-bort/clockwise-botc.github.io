@@ -554,42 +554,6 @@ form.change-pw .toolbar, form.change-pw .msg { margin: 0; }
 /* Characters a player hasn't played yet ("Show all" on Characters played). */
 tr.unplayed td { opacity: .5; }
 
-/* ---------- Playstyles tab ----------
-   Fates (a stacked bar, in game order) use slots of the validated categorical palette, stepped separately for light
-   and dark: violet, orange, aqua, yellow, magenta, green (adjacent pairs pass CVD + normal-vision checks in both
-   modes). */
-:root {
-  --ps-f0: #6250d6; --ps-f1: #eb6834; --ps-f2: #1baf7a; --ps-f3: #eda100; --ps-f4: #e87ba4; --ps-f5: #008300;
-}
-:root:not([data-theme="light"]) {
-  --ps-f0: #9085e9; --ps-f1: #d95926; --ps-f2: #199e70; --ps-f3: #c98500; --ps-f4: #d55181; --ps-f5: #008300;
-}
-/* Players, characters and types don't apply to the Playstyles tab (it's about everyone). */
-body.tab-styles [data-ms="players"], body.tab-styles [data-ms="characters"], body.tab-styles [data-ms="types"] { display: none; }
-.ps-head { display: flex; align-items: center; justify-content: space-between; gap: 12px 24px; flex-wrap: wrap; margin: 4px 0 18px; }
-.ps-head .summary.lead { margin: 0; flex: 1 1 420px; }
-.ps-sides { flex: none; }
-
-.sw.ps-f0, .ps-split .ps-f0 { background: var(--ps-f0); }
-.sw.ps-f1, .ps-split .ps-f1 { background: var(--ps-f1); }
-.sw.ps-f2, .ps-split .ps-f2 { background: var(--ps-f2); }
-.sw.ps-f3, .ps-split .ps-f3 { background: var(--ps-f3); }
-.sw.ps-f4, .ps-split .ps-f4 { background: var(--ps-f4); }
-.sw.ps-f5, .ps-split .ps-f5 { background: var(--ps-f5); }
-/* Labels on the lighter segments in dark ink so they stay readable. */
-.ps-split .ps-f2, .ps-split .ps-f3, .ps-split .ps-f4 { color: #1a1324; }
-.ps-split > div { justify-content: center; padding: 0 4px; }
-.ps-split > div:first-child { border-radius: 6px 0 0 6px; }
-.ps-split > div:last-child { border-radius: 0 6px 6px 0; }
-.ps-split > div:only-child { border-radius: 6px; }
-.ps-fates-legend span { cursor: help; }
-.ps-bars { display: grid; }
-.ps-row { padding: 4px 0; }
-.ps-gh { display: flex; align-items: center; gap: 6px; margin: 14px 0 2px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 14px; }
-
-.ps-how summary { cursor: pointer; font-weight: 600; color: var(--ink-2); }
-.ps-how p { color: var(--ink-2); max-width: 80ch; }
-
 /* At the table: a value, and under it how far it is from the average player. */
 .tt-cell { display: grid; gap: 2px; min-width: 120px; }
 .tt-cell b { font-variant-numeric: tabular-nums; }
@@ -630,5 +594,6 @@ table.tt td:first-child { color: var(--ink-2); max-width: 160px; }
 .tt-axis span.avg { transform: translateX(-50%); color: var(--ink-2); font-weight: 600; }
 @media (max-width: 560px) { .tt-row { grid-template-columns: 84px 1fr 70px; gap: 8px; } .tt-axis span:not(.avg) { display: none; } }
 .delta.ps-dir { color: var(--ink-2); font-weight: 600; font-size: 12.5px; }
-/* Full-width cards (the Playstyles tab), over .card.wide's two columns. */
-.card.wide.span-all { grid-column: 1 / -1; }
+/* Awards row on the main page: three plain tiles under the totals. */
+.tiles.awards .info { cursor: help; color: var(--muted); font-weight: 400; }
+
