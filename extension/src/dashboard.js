@@ -6,7 +6,7 @@ import { esc, pct, cap, plural, fmtDate, fmtTime, phaseLabel, teamLabel, teamOne
 import { renderData, handleDataClick, handleImport } from './dataview.js';
 import { playstylesView, STYLE_SIDES } from './playstylesview.js';
 import { tableTalk, nominationPairs, MEASURES } from './tabletalk.js';
-import { talkCell, talkChartCard } from './tabletalkview.js';
+import { talkCell, talkChartCard, talkChartBody, talkChartNote, talkChartSub } from './tabletalkview.js';
 import { renderGrimoire } from './grimoire.js';
 import { makeImages } from './images.js';
 import { characterToken, installTokenStyle } from './tokens.js';
@@ -30,7 +30,7 @@ const prefs = (() => { try { return JSON.parse(localStorage.getItem('dash.prefs'
 const state = {
   tab: readTab(),
   styleSide: readSide(), // Playstyles tab: good, evil or all games
-  talkView: { measure: 'loud', side: 'all' }, // main page's At the table chart
+  talkView: { measure: 'loud', side: 'all', added: [] }, // main page's At the table chart: measure, games, players added by hand
   filters: { communities: Array.isArray(prefs.communities) ? prefs.communities : [], script: '', storyteller: '', days: '' },
   sel: readHash(),
   expanded: new Set(),
@@ -395,7 +395,7 @@ function overallSections(base) {
     ${gamesCards.balance(base)}
     ${gamesCards.playerCount(base)}
     ${gamesCards.players(base)}
-    ${talkChartCard(talk(base), state.talkView.measure, state.talkView.side, { playerLink, selected: state.sel.players })}
+    ${talkChartCard(talk(base), state.talkView, talkHelpers())}
     ${st ? storytellerCompareCard(nameOf(st), base, others) : gamesCards.storytellers(base)}
     ${gamesCards.scripts(base)}
     ${gamesCards.counts(base)}
@@ -636,6 +636,33 @@ function talk(base) {
   if (talkCache.games !== base) talkCache = { games: base, out: tableTalk(base) };
   return talkCache.out;
 }
+// The main page's chart: you are always in it; the picker adds anyone else. Redrawn in place, so the picker stays open.
+const talkHelpers = () => ({ playerLink, me: myPlayer() });
+let talkPicker = null;
+function refreshTalkChart() {
+  const body = $('#tt-chart'), note = $('#tt-note');
+  if (!body) return;
+  const T = talk(baseGames());
+  body.innerHTML = talkChartBody(T, state.talkView, talkHelpers());
+  note.textContent = talkChartNote(T, state.talkView, talkHelpers());
+  const sub = $('.tt-chart-card > .sub');
+  if (sub) sub.textContent = talkChartSub(T, state.talkView);
+  if (talkPicker) talkPicker.refresh();
+}
+function mountTalkPicker() {
+  const root = $('[data-ms-talk]');
+  talkPicker = null;
+  if (!root) return;
+  talkPicker = multiSelect(root, {
+    label: 'Add players', nameOf,
+    options: () => talk(baseGames())[state.talkView.side].players.filter((p) => !isHidden(p.key))
+      .map((p) => ({ value: p.key, label: p.name, sub: p.key === myPlayer() ? 'You' : plural(p.games, 'game') }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+    selected: () => state.talkView.added,
+    onChange: (values) => { state.talkView.added = values; refreshTalkChart(); },
+  });
+}
+
 function talkCard(base, key) {
   const T = talk(base);
   const find = (side) => T[side].players.find((p) => p.key === key);
@@ -1169,6 +1196,7 @@ function render() {
   keepOpenForms(() => { $('#view').innerHTML = (state.tab !== 'data' ? connectCard() : '') + views[state.tab](); });
   // Editors' account list loads the first time Data & settings is opened.
   mountClaimPicker();
+  mountTalkPicker();
   fillRows();
   fitLists();
   if (state.tab === 'data' && state.accounts === undefined && state.shared.on && state.shared.canEdit && creds(state.settings).editorKey) { state.accounts = null; loadAccounts(); }
@@ -1485,7 +1513,7 @@ document.addEventListener('change', async (e) => {
   const t = e.target;
   if (t.dataset.talkMeasure !== undefined || t.dataset.talkSide !== undefined) {
     if (t.dataset.talkMeasure !== undefined) state.talkView.measure = t.value; else state.talkView.side = t.value;
-    render();
+    refreshTalkChart();
     return;
   }
   if (t.dataset.filter) {
