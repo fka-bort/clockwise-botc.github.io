@@ -1,9 +1,8 @@
 # Playstyle analysis (Python)
 
-`playstyles.ipynb` runs the same analysis as the dashboard's **Playstyles** tab, with extra checks on how strong the
-clusters are: how many groups to use, a permutation test for "is there any structure at all", bootstrap stability,
-per-player silhouettes, a PCA biplot and a Ward dendrogram. `playstyles.py` holds the shared logic (fates, features,
-shrinkage) and mirrors `extension/src/playstyles.js`.
+`playstyles.ipynb` is a workbench for deciding whether players fall into playstyles, how many, and on which rates,
+before anything is named or put on the dashboard. `playstyles.py` holds the shared logic (fates, features, shrinkage)
+and mirrors `extension/src/playstyles.js`.
 
 ## Run it in VS Code
 
@@ -16,6 +15,15 @@ shrinkage) and mirrors `extension/src/playstyles.js`.
    ```
 3. Open `playstyles.ipynb`, pick the `.venv` kernel (top right), and **Run All**.
 
-It runs on `../sample-data/botc-sample-games.json` (synthetic games) out of the box. For your community's games, export
-JSON from the dashboard (**Data & settings → Export**) and set `DATA_PATH` in the first code cell. `SIDE`, `MIN_GAMES`
-and `K` are there too.
+## Using it
+
+Everything you'd change is in the first code cell:
+
+- `DATA_PATH`: a JSON export from the dashboard (**Data & settings → Export**). Defaults to the synthetic sample data.
+- `SIDE`: `"good"`, `"evil"` or `"all"`; `MIN_GAMES`; `SHRINK` (0 = raw rates).
+- `FEATURES_TO_USE`: which rates to cluster on.
+- `K_RANGE`: the k's to evaluate; `K_COMPARE`: the k's to put side by side; `K`: your pick.
+
+Section 3 scores every k (silhouette against a shuffled no-structure baseline, bootstrap stability, elbow,
+Calinski–Harabasz, Davies–Bouldin, GMM BIC). Section 4 shows the group profiles for the candidate k's side by side and
+how groups split as k grows. Section 5 digs into the `K` you pick. Groups are numbered, not named.

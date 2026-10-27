@@ -44,6 +44,7 @@ FEATURES = {
                         high={"good": "Demon's first pick", "evil": "Early casualty", "all": "Early target"}),
     "execEarly": dict(num="f_execEarly", den="known", label="Executed early", sides=("good", "evil", "all"),
                       high={"good": "Lightning rod", "evil": "Caught early", "all": "Lightning rod"}),
+    "diedLater": dict(num="f_diedLater", den="known", label="Died later on", sides=("good", "evil", "all")),
     "execFinal": dict(num="f_execFinal", den="known", label="Executed on final day", sides=("good", "evil", "all"),
                       high={"good": "The frame", "evil": "Caught at the end", "all": "Final-day pick"}),
     "survived": dict(num="survived", den="known", label="Survived", sides=("good", "evil", "all"),
@@ -58,6 +59,7 @@ FEATURES = {
                         high={"good": "Sharp nose"}),
     "enemyExecs": dict(num="enemyExecs", den="tracked", label="Gets other team executed (per game)",
                        sides=("good", "evil", "all"), high={"good": "Hound dog", "evil": "The framer", "all": "Closer"}),
+    "votes": dict(num="votes", den="tracked", label="Votes per game", sides=("good", "evil", "all")),
     "voteAccuracy": dict(num="votesOnEvil", den="votes", label="Votes on evil", sides=("good",),
                          high={"good": "Sharp voter"}),
 }
@@ -203,11 +205,15 @@ def player_table(seats: pd.DataFrame, side: str = "good", shrink: float = SHRINK
     return t.sort_values("games", ascending=False).reset_index(drop=True)
 
 
-def feature_matrix(players: pd.DataFrame, side: str = "good", min_games: int | None = None):
-    """z-scored shrunk rates for players with enough games. Returns (X DataFrame indexed by name, features used)."""
+def feature_matrix(players: pd.DataFrame, side: str = "good", min_games: int | None = None, features: list[str] | None = None):
+    """z-scored shrunk rates for players with enough games. Returns (X DataFrame indexed by name, features used).
+
+    features: which rates to use (default: every one that applies to the side). Ones that don't vary are dropped.
+    """
     min_games = MIN_GAMES[side] if min_games is None else min_games
     p = players[players["games"] >= min_games]
-    S = p[[f"s_{f}" for f in features_for(side)]].rename(columns=lambda c: c[2:])
+    wanted = [f for f in (features or features_for(side)) if f in features_for(side)]
+    S = p[[f"s_{f}" for f in wanted]].rename(columns=lambda c: c[2:])
     feats = [f for f in S.columns if S[f].std(ddof=0) > 1e-9]
     X = (S[feats] - S[feats].mean()) / S[feats].std(ddof=0)
     X.index = p["name"].values
