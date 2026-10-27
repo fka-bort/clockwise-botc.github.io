@@ -1047,12 +1047,12 @@ function gamesView() {
   return `${summaryLine(G, base, state.sel)}${G.length ? gamesList(G) : '<div class="card empty"><h2>No games match</h2><p>Try removing a filter.</p></div>'}`;
 }
 
-// Playstyles: every player in the filtered games; picked players are highlighted on the map, and characters and
-// types don't apply (their dropdowns are hidden on this tab).
+// Playstyles: every player in the filtered games. The player, character and type pickers don't apply (they're hidden
+// on this tab).
 function stylesView() {
   if (!state.games.length) return noGames();
   const base = baseGames();
-  return playstylesView(base, { side: state.styleSide, selected: state.sel.players, playerLink, sortable, colPlayer, colNum, colRate, talk: talk(base), talkCell });
+  return playstylesView(base, { side: state.styleSide, playerLink, sortable, colPlayer, colNum, colRate, talk: talk(base), talkCell });
 }
 
 function statsView() {

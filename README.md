@@ -81,11 +81,10 @@ Every table can be sorted: click a column label to sort by it (▼), click it ag
 
 ### Playstyles
 
-The Playstyles tab looks at how each player's games tend to go, as good, as evil or across all games (toggle at the top right). The script, storyteller, period and community filters apply; players picked in the Players filter are highlighted on the map.
+The Playstyles tab looks at everyone at once, as good, as evil or across all games (toggle at the top right). The script, storyteller, period and community filters apply.
 
-- **How their games end:** every seat gets one fate: killed early (at night or by an ability, by the end of Day 2), executed early (Day 1 or 2), died later on, executed on the final day (as good in a game evil won, that's the frame), survived and lost, or survived and won. Each player's mix is a bar, with everyone's mix on top.
-- **Player map and playstyles:** each player with enough games (5 as good, 3 as evil) gets a few rates: killed early, executed early, executed on the final day, survived, win rate, nominations per game, how often their nominations land on evil and get the other team executed. Rates are pulled toward the table-wide rate as if each player had 5 extra average games, so a few lucky games can't make someone look extreme. k-means then groups players who look alike (2–4 groups, whichever split is clearest by silhouette), and each group is named after what sets it apart most: *Lightning rod*, *Survivor*, *Hound dog*, *The framer*, *Quiet one* and so on. The map places players with PCA, so players close together play alike.
-- **At the table:** everyone on the same four measures as the player page (nominations, times nominated, voting and time alive, per day alive), next to the average, for the side picked at the top.
+- **At the table:** everyone with enough games (5, or 3 per side) on the same four measures as the player page (nominations, times nominated, voting and time alive, per day alive), next to the average.
+- **How their games end:** every seat gets one fate: killed early (at night or by an ability, by the end of Day 2), executed early (Day 1 or 2), died later on, executed on the final day (as good in a game evil won, that's the frame), survived and lost, or survived and won. Each player's mix is a bar, with everyone's mix on top, early exits first.
 - **Hound dogs / Framers:** whose nominations get the other team executed, plus (as good) how often their nominations and votes land on evil. Only games recorded from the start count here.
 
 ### Games
@@ -162,7 +161,7 @@ extension/
   src/communities.js   which community a room/game belongs to
   src/stats.js         filters and overall win-rate calculations
   src/insights.js      stats for any selection of players / characters / types, and the prediction model
-  src/playstyles.js    how each player's games end, nominations, and the playstyle groups (k-means + PCA)
+  src/playstyles.js    how each player's games end, and whose nominations get the other team executed
   src/playstylesview.js  the Playstyles tab
   src/tabletalk.js     per-day-alive nominations, votes and survival next to the average; who nominates whom
   src/tabletalkview.js the At the table chart and cells
