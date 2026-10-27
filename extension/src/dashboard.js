@@ -1012,7 +1012,7 @@ function playersTile(G) {
   const keys = new Set(G.flatMap((g) => g.players.map(playerKey)).filter(Boolean));
   const counts = G.map((g) => g.playerCount || g.players.filter((p) => !p.isTraveller).length).filter(Boolean);
   const avg = counts.length ? Math.round(counts.reduce((a, b) => a + b, 0) / counts.length) : null;
-  return tile('Players', keys.size, avg ? `about ${avg} at the table per game` : '', 'highlight feature');
+  return tile('Players', keys.size, avg ? `about ${avg} at the table per game` : '');
 }
 
 function lengthTile(G, o) {
