@@ -7,16 +7,19 @@
 // they nominated someone that day; otherwise they're taken to have died the night before.
 //
 // Only games recorded from the start count (earlier days are missing otherwise), and travellers are left out.
-// The alignment split (as good / as evil) uses only games where the player kept one alignment the whole game:
-// their character never changed and its team matches the alignment they ended on.
+// The alignment split (as good / as evil) uses only games where the player kept one alignment the whole game: the
+// character they started with and the one they ended with both belong to the side they ended on. A change within one
+// side (a Scarlet Woman becoming the Imp) still counts; a Snake Charmer swap or a Pit-Hag turning them evil doesn't.
 //
 // Rates are pulled toward the table-wide rate by a few pretend days/votes/games (SHRINK), so players with little data
 // don't top or bottom the rankings by luck. Percentiles compare each player with everyone with enough games.
 
 import { playerKey, displayName } from './stats.js';
+import { ALL_CHARACTERS } from './characters.js';
 
 export const MIN_GAMES = { all: 5, good: 3, evil: 3 };
 const SHRINK = { perDay: 8, votes: 20, life: 3 }; // pretend days, vote chances, games
+const TEAM_OF = new Map(ALL_CHARACTERS.map(([id, , team]) => [id, team]));
 const homeSide = (team) => (team === 'townsfolk' || team === 'outsider' ? 'good' : team === 'minion' || team === 'demon' ? 'evil' : null);
 const dayOf = (n) => n.day || (n.phase ? Math.ceil(n.phase / 2) : null);
 const enoughVotes = (n) => typeof n.votes !== 'number' || !n.majority || n.votes >= n.majority;
@@ -49,7 +52,9 @@ export function seatRecords(games) {
       const key = playerKey(p);
       const alive = last.get(p.seat);
       if (!key || p.isTraveller || alive === null || alive === undefined || (p.alignment !== 'good' && p.alignment !== 'evil')) continue;
-      const steady = homeSide(p.team) === p.alignment && (!p.startingRoleId || p.startingRoleId === p.roleId);
+      // A starting character we don't know the team of (a homebrew one) can't be checked, so that game is left out.
+      const changed = p.startingRoleId && p.startingRoleId !== p.roleId;
+      const steady = homeSide(p.team) === p.alignment && (!changed || homeSide(TEAM_OF.get(p.startingRoleId)) === p.alignment);
       const r = { g, p, key, side: p.alignment, steady, days: Math.max(alive, 0), gameDays: g.days, made: 0, received: 0, votes: 0, chances: 0 };
       for (const n of noms) {
         const d = dayOf(n);
