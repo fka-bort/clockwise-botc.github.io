@@ -617,3 +617,11 @@ table.tt td:first-child { color: var(--ink-2); max-width: 160px; }
 .grid.stack { grid-template-columns: 1fr; }
 body.tab-styles [data-ms="players"], body.tab-styles [data-ms="characters"], body.tab-styles [data-ms="types"] { display: none; }
 .grid.stack > .card { grid-column: 1 / -1; }
+
+/* At the table bars and scatter dots: plum for all games, Townsfolk blue as good, Minion rust as evil. You stay in ink. */
+.side-good .tt-bar, .side-good .tt-dot { background: var(--good); }
+.side-evil .tt-bar, .side-evil .tt-dot { background: var(--evil); }
+.side-good .tt-row.sel .tt-dot, .side-evil .tt-row.sel .tt-dot { background: var(--ink); }
+.sc.side-good .sc-pt circle:last-child { fill: var(--good); }
+.sc.side-evil .sc-pt circle:last-child { fill: var(--evil); }
+.sc.side-good .sc-pt.me circle:last-child, .sc.side-evil .sc-pt.me circle:last-child { fill: var(--ink); }

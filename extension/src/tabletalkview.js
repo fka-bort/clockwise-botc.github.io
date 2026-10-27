@@ -68,7 +68,7 @@ export function talkChartBody(talk, view, h) {
   };
   // A marker wherever ranked players are left out between two shown ones (or before the first / after the last).
   const skip = (n) => (n > 0 ? `<div class="tt-row tt-skip"><div></div><div class="tt-track bare"><span>⋯ ${plural(n, 'more player')}</span></div><div></div></div>` : '');
-  let html = `<div class="tt-row tt-axis" aria-hidden="true"><div></div><div class="tt-track bare"><span style="left:0">${m.fmt(avg - reach)}</span><span class="avg" style="left:50%">average</span><span style="right:0">${m.fmt(avg + reach)}</span></div><div></div></div>`;
+  let html = `<div class="tt-side side-${view.side}"><div class="tt-row tt-axis" aria-hidden="true"><div></div><div class="tt-track bare"><span style="left:0">${m.fmt(avg - reach)}</span><span class="avg" style="left:50%">average</span><span style="right:0">${m.fmt(avg + reach)}</span></div><div></div></div>`;
   let last = 0;
   for (const p of shown) {
     const k = rank.get(p.key);
@@ -76,7 +76,7 @@ export function talkChartBody(talk, view, h) {
     html += row(p);
   }
   html += skip(listed.length - last);
-  return html;
+  return `${html}</div>`;
 }
 
 // What's shown, in words, under the controls.
@@ -160,7 +160,7 @@ export function scatterSvg(talk, view, h) {
     dots += `<g class="sc-pt${q.me ? ' me' : ''}" data-add-player="${esc(q.p.key)}" data-tip="${esc(tip)}"><circle cx="${f1(q.x)}" cy="${f1(q.y)}" r="11" fill="transparent"/><circle cx="${f1(q.x)}" cy="${f1(q.y)}" r="${q.me ? 6.5 : 5}"/></g>`;
   }
   const aria = `${S.xTitle} against ${S.yTitle.toLowerCase()} for ${plural(pts.length, 'player')}${view.side === 'all' ? '' : ` ${sideWords(view.side)}`}`;
-  return `<svg class="sc" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(aria)}">${g}${dots}${names}</svg>`;
+  return `<svg class="sc side-${view.side}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(aria)}">${g}${dots}${names}</svg>`;
 }
 
 export function scatterCard(talk, view, h) {
