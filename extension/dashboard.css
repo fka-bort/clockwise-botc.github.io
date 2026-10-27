@@ -613,3 +613,7 @@ table.tt td:first-child { color: var(--ink-2); max-width: 160px; }
 .sc .sc-pt:hover circle:last-child { stroke: var(--ink); }
 .sc .sc-name { fill: var(--ink-2); font-size: 11px; pointer-events: none; }
 .sc .sc-name.me { fill: var(--ink); font-weight: 700; font-size: 12px; }
+/* Playstyles tab: cards stacked full width; the player, character and type pickers don't apply there. */
+.grid.stack { grid-template-columns: 1fr; }
+body.tab-styles [data-ms="players"], body.tab-styles [data-ms="characters"], body.tab-styles [data-ms="types"] { display: none; }
+.grid.stack > .card { grid-column: 1 / -1; }

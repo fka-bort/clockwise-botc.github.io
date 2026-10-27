@@ -45,19 +45,16 @@ The character, alignment and winner data comes from the end-of-game reveal, whic
 
 The look follows the Mayor-Baron Type Indicator: warm parchment, cream cards with large rounded corners, and plum text, with Fraunces titles and Figtree text (both bundled, so it works offline). Good is shown in its Townsfolk blue and evil in its Minion rust. Tabs sit in a pill bar at the top right, and the filters sit in one row in the same pill style. Once you set a filter, a short summary of what you are looking at appears above the row of cards, with the most interesting card highlighted in mauve. It fills the window up to 1440px wide and stays centered on bigger screens. It uses a dark theme by default, on a tiled purple texture that runs behind the header too. Click the Clockwise logo to go back to the main page.
 
-The dashboard has three tabs: **Stats** (the default), **Games** and **Data & settings**.
+The dashboard has four tabs: **Stats** (the default), **Playstyles**, **Games** and **Data & settings**.
 
 ### Stats
 
 The Stats tab is a single page that adapts to what you select. With nothing selected (or just a community), it shows the overall picture:
 
-- **Totals:** the number of games, the average game length, and a spotlight on the player with the highest win rate. Only players with at least 5 games (or 10% of all games) count. It's a single highlight, not a ranking, so nobody is singled out for a low win rate.
-- **Awards:** the **top hound dog** (as good, the most evil players executed from their nominations per game; 5+ games as good), the **top framer** (as evil, the most good players executed from their nominations per game; 3+ games as evil) and the **best survivor** (alive at the end of the most games; 5+ games). Each rate is pulled toward the average as if the player had 5 extra average games, so a lucky handful of games can't win. Only games recorded from the start count for the nomination awards.
-- **Who they nominate / Who they vote for:** a scatter of every player with 5+ games (3+ per side): across, how often they nominate (per day alive) or vote (share of the nominations they could vote on); up, the share of those on a player of the other team. Dashed lines mark the averages, and each corner is named (e.g. "Nominates a lot, mostly the other team"). Dropdowns pick nominations or votes, and all games, as good or as evil.
+- **Totals:** the number of games, the average game length, and how many different people have played (with how many sit down in a typical game).
 - **Game balance:** a pie chart of good vs. evil wins, with a one-line verdict such as "Games look balanced between both teams."
 - **Player count:** a pie chart of how many players sat down. Lighter slices mean smaller tables, and every size is listed underneath with its number of games.
 - **Most frequent players** and **most frequent storytellers:** the top 5 of each, by number of games.
-- **At the table:** players with 5+ games (3+ per side) on one measure, as a bar from the average player to their value, numbered by rank. Two dropdowns pick the measure (nominations, times nominated, votes while alive, share of the game alive) and the games (all, as good, as evil). With more than 20 players it shows the top 10 and bottom 10, with a marker for how many sit between; your own player (once you've claimed it under Data & settings) is always shown, and **Add players** (type to search) puts anyone else in too. Above or below average is shown by direction only, since neither is better.
 - **Who wins:** by script, by player count, and by storyteller.
 - **Characters:** the characters that help good and those that help evil.
 - **With a storyteller picked** (the storyteller filter), the two storyteller cards are swapped for **How their games compare** (good win rate, game length, deaths and nominations per game, next to other storytellers' games under the same filters) and **Their favourite characters**. That card shows the characters they put in play more often than other storytellers do, compared on the same scripts so it reflects their choices rather than which scripts they run.
@@ -80,6 +77,15 @@ Pick anything to focus the page on it. Every name on the page is clickable and a
   - A character plus a type shows that type in games with the character, e.g. *Outsiders when the Baron is in play*.
 
 Every table can be sorted: click a column label to sort by it (▼), click it again to flip the order (▲), or click another column to sort by that instead. The **Community** buttons at the top start with neither on, which shows every recorded game. Turn on Escape, Rhap or both to see only those games. The dashboard remembers your choice. The script, storyteller and period filters narrow everything too. **See these games →** at the bottom jumps to the matching games. The tab and selection are saved in the page address, so you can bookmark a view.
+
+### Playstyles
+
+Everyone at once. The community, script, storyteller and period filters apply.
+
+- **Awards:** the **top hound dog** (as good, the most evil players executed from their nominations per game; 5+ games as good), the **top framer** (as evil, the most good players executed from their nominations per game; 3+ games as evil) and the **best survivor** (alive at the end of the most games; 5+ games). Each rate is pulled toward the average as if the player had 5 extra average games, so a lucky handful of games can't win. Only games recorded from the start count for the nomination awards.
+- **At the table:** players with 5+ games (3+ per side) on one measure, as a bar from the average player to their value, numbered by rank. Two dropdowns pick the measure (nominations, times nominated, votes while alive, share of the game alive) and the games (all, as good, as evil). With more than 20 players it shows the top 10 and bottom 10, with a marker for how many sit between; your own player (once you've claimed it under Data & settings) is always shown, and **Add players** (type to search) puts anyone else in too. Above or below average is shown by direction only, since neither is better.
+- **Who they nominate / Who they vote for:** a scatter of every player with 5+ games (3+ per side): across, how often they nominate (per day alive) or vote (share of the nominations they could vote on); up, the share of those on a player of the other team. Dashed lines mark the averages. Dropdowns pick nominations or votes, and all games, as good or as evil.
+- **Win rates:** every player with 5+ games, overall, as good and as evil, most-played first (click a column to sort).
 
 ### Games
 

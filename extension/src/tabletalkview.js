@@ -68,7 +68,7 @@ export function talkChartBody(talk, view, h) {
   };
   // A marker wherever ranked players are left out between two shown ones (or before the first / after the last).
   const skip = (n) => (n > 0 ? `<div class="tt-row tt-skip"><div></div><div class="tt-track bare"><span>⋯ ${plural(n, 'more player')}</span></div><div></div></div>` : '');
-  let html = `<div class="tt-row tt-axis" aria-hidden="true"><div></div><div class="tt-track bare"><span style="left:0">${m.fmt(avg - reach)}</span><span class="avg" style="left:50%">average ${m.fmt(avg)}</span><span style="right:0">${m.fmt(avg + reach)}</span></div><div></div></div>`;
+  let html = `<div class="tt-row tt-axis" aria-hidden="true"><div></div><div class="tt-track bare"><span style="left:0">${m.fmt(avg - reach)}</span><span class="avg" style="left:50%">average</span><span style="right:0">${m.fmt(avg + reach)}</span></div><div></div></div>`;
   let last = 0;
   for (const p of shown) {
     const k = rank.get(p.key);
@@ -91,7 +91,7 @@ export function talkChartNote(talk, view, h) {
   return `Showing ${parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : parts[0]}.`;
 }
 
-export const talkChartSub = (talk, view) => `Each player next to the average player (the line), for players with ${talk[view.side].minGames}+ games${view.side === 'all' ? '' : ` ${sideWords(view.side)} (only games where they kept one alignment)`}. Only games recorded from the start count. Hover a bar for the counts; click a name for their page.`;
+export const talkChartSub = (talk, view) => `Players with ${talk[view.side].minGames}+ games${view.side === 'all' ? '' : ` ${sideWords(view.side)} (games where they kept one alignment)`}. The line is the average; hover a bar for the counts.`;
 
 export function talkChartCard(talk, view, h) {
   const select = (attr, options, cur, label) => `<select ${attr} aria-label="${label}">${options.map(([v, l]) => `<option value="${v}"${v === cur ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
@@ -101,14 +101,12 @@ export function talkChartCard(talk, view, h) {
 
 // ---------- nominations / votes scatter ----------
 // Each player as a dot: how much they nominate (or vote) across, and what share of it lands on the other team up.
-// Dashed lines at the averages split the chart into four corners, each named in words.
+// Dashed lines mark the averages.
 // view: { kind: 'noms' | 'votes', side }   h: { me }
 export const SCATTER_KINDS = [['noms', 'Nominations'], ['votes', 'Votes']];
 const SCATTER = {
-  noms: { x: 'loud', y: 'nomOther', xTitle: 'Nominations per day alive', yTitle: 'Share on the other team',
-    corners: ['Rarely nominates, mostly the other team', 'Nominates a lot, mostly the other team', 'Rarely nominates, often their own team', 'Nominates a lot, often their own team'] },
-  votes: { x: 'voter', y: 'voteOther', xTitle: 'Votes on nominations while alive', yTitle: 'Share on the other team',
-    corners: ['Rarely votes, mostly the other team', 'Votes a lot, mostly the other team', 'Rarely votes, often their own team', 'Votes a lot, often their own team'] },
+  noms: { x: 'loud', y: 'nomOther', xTitle: 'Nominations per day alive', yTitle: 'Share on the other team' },
+  votes: { x: 'voter', y: 'voteOther', xTitle: 'Votes on nominations while alive', yTitle: 'Share on the other team' },
 };
 // Round tick steps (1, 2, 2.5, 5 × 10ⁿ) covering [lo, hi].
 function ticks(lo, hi, want = 5) {
@@ -139,19 +137,11 @@ export function scatterSvg(talk, view, h) {
   for (const t of ticks(y0, y1)) g += `<line class="sc-grid" x1="${L}" x2="${W - R}" y1="${f1(sy(t))}" y2="${f1(sy(t))}"/><text class="sc-tick" x="${L - 8}" y="${f1(sy(t) + 4)}" text-anchor="end">${my.fmt(t)}</text>`;
   g += `<text class="sc-title" x="${(L + W - R) / 2}" y="${H - 8}" text-anchor="middle">${esc(S.xTitle)} →</text>`;
   g += `<text class="sc-title" transform="translate(14 ${(TOP + H - B) / 2}) rotate(-90)" text-anchor="middle">${esc(S.yTitle)} →</text>`;
-  // Averages, and the four corners they make.
+  // The averages.
   g += `<line class="sc-avg" x1="${f1(sx(ax))}" x2="${f1(sx(ax))}" y1="${TOP}" y2="${H - B}"/><line class="sc-avg" x1="${L}" x2="${W - R}" y1="${f1(sy(ay))}" y2="${f1(sy(ay))}"/>`;
-  g += `<text class="sc-avgl" x="${f1(sx(ax) + 4)}" y="${TOP + 10}">average ${mx.fmt(ax)}</text><text class="sc-avgl" x="${W - R - 2}" y="${f1(sy(ay) - 5)}" text-anchor="end">average ${my.fmt(ay)}</text>`;
-  const [tl, tr, bl, br] = S.corners;
-  g += `<text class="sc-corner" x="${L + 8}" y="${TOP + 26}">${esc(tl)}</text><text class="sc-corner" x="${W - R - 8}" y="${TOP + 26}" text-anchor="end">${esc(tr)}</text>`;
-  g += `<text class="sc-corner" x="${L + 8}" y="${H - B - 10}">${esc(bl)}</text><text class="sc-corner" x="${W - R - 8}" y="${H - B - 10}" text-anchor="end">${esc(br)}</text>`;
   // Dots, then names where there's room (you always); hover any dot for the numbers.
   const P = pts.map((p) => ({ p, x: sx(p.rates[S.x].value), y: sy(p.rates[S.y].value), me: p.key === h.me })).sort((a, b) => a.me - b.me);
   const boxes = P.map((q) => ({ x0: q.x - 6, x1: q.x + 6, y0: q.y - 6, y1: q.y + 6 }));
-  // Keep names off the average labels and the corner captions.
-  const text = (x, y, chars, anchor) => { const w = chars * 6.2; const bx = anchor === 'end' ? x - w : x; return { x0: bx, x1: bx + w, y0: y - 11, y1: y + 3 }; };
-  boxes.push(text(sx(ax) + 4, TOP + 10, `average ${mx.fmt(ax)}`.length, 'start'), text(W - R - 2, sy(ay) - 5, `average ${my.fmt(ay)}`.length, 'end'),
-    text(L + 8, TOP + 26, tl.length, 'start'), text(W - R - 8, TOP + 26, tr.length, 'end'), text(L + 8, H - B - 10, bl.length, 'start'), text(W - R - 8, H - B - 10, br.length, 'end'));
   const hit = (b) => b.x0 < L || b.x1 > W - R || b.y0 < TOP || b.y1 > H - B || boxes.some((o) => b.x0 < o.x1 && b.x1 > o.x0 && b.y0 < o.y1 && b.y1 > o.y0);
   let dots = '', names = '';
   for (const q of [...P].sort((a, b) => b.me - a.me || b.p.games - a.p.games)) {
@@ -177,7 +167,7 @@ export function scatterCard(talk, view, h) {
   const T = talk[view.side];
   const select = (attr, options, cur, label) => `<select ${attr} aria-label="${label}">${options.map(([v, l]) => `<option value="${v}"${v === cur ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
   const controls = `<div class="tt-controls">${select('data-scatter-kind', SCATTER_KINDS, view.kind, 'Chart')}${select('data-scatter-side', TALK_SIDES, view.side, 'Games')}</div>`;
-  const what = view.kind === 'noms' ? 'how often they nominate (per day alive)' : 'how often they vote (share of the nominations they could vote on)';
-  const sub = `Across: ${what}. Up: the share of those on a player of the other team. For players with ${T.minGames}+ games${view.side === 'all' ? '' : ` ${sideWords(view.side)} (only games where they kept one alignment)`}; games recorded from the start. Rates are pulled slightly toward the average when there's little data. Hover a dot for the counts; click it for their page.`;
+  const what = view.kind === 'noms' ? 'nominations per day alive' : 'share of nominations they voted on while alive';
+  const sub = `Across: ${what}. Up: share on the other team. Dashed lines: the average. Players with ${T.minGames}+ games${view.side === 'all' ? '' : ` ${sideWords(view.side)}`}; hover a dot for the counts.`;
   return card(view.kind === 'noms' ? 'Who they nominate' : 'Who they vote for', sub, `${controls}<div class="sc-wrap">${scatterSvg(talk, view, h)}</div>`, 'wide sc-card');
 }

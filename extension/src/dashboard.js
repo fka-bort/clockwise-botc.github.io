@@ -1,4 +1,4 @@
-import { filterGames, overview, distinct, playerKey, displayNames, useDisplayNames, storytellerKeys } from './stats.js';
+import { filterGames, overview, distinct, playerKey, displayNames, useDisplayNames, storytellerKeys, players as playerRows } from './stats.js';
 import { predictOutcome, tuneOutcomeModel } from './insights.js';
 import { TYPES, emptySelection, hasSelection, selectGames, holds, focusSeats, outcome, seatStats, characterTable, companions, countEffect, relations, groupRelations, nominationStats, playerTable, tokenDraws } from './insights.js';
 import { communityConfig, communityName, gameCommunity, NONE, DEFAULTS } from './communities.js';
@@ -25,7 +25,7 @@ const api = {
 };
 
 // ---------- state ----------
-const TABS = ['stats', 'games', 'data'];
+const TABS = ['stats', 'styles', 'games', 'data'];
 const prefs = (() => { try { return JSON.parse(localStorage.getItem('dash.prefs')) || {}; } catch { return {}; } })();
 const state = {
   tab: readTab(),
@@ -189,11 +189,6 @@ function storytellerTable(games) {
 }
 
 // One gentle highlight rather than a ranking: the best record among players with a fair number of games.
-function topWinRate(base) {
-  const min = Math.max(5, Math.ceil(base.length * 0.1));
-  return playerTable(base).filter((p) => p.plays >= min).sort((a, b) => b.winRate - a.winRate || b.plays - a.plays)[0] || null;
-}
-
 // "Characters that help good / evil": how often good wins when each is in play, against all games in the filters.
 // `what` names the characters ("Characters", "Outsiders"); `keep` narrows them, e.g. to one type.
 function swingCards(base, what, keep = () => true) {
@@ -390,8 +385,6 @@ function overallSections(base) {
     ${gamesCards.balance(base)}
     ${gamesCards.playerCount(base)}
     ${gamesCards.players(base)}
-    ${talkChartCard(talk(base), state.talkView, talkHelpers())}
-    ${scatterCard(talk(base), state.scatterView, talkHelpers())}
     ${st ? storytellerCompareCard(nameOf(st), base, others) : gamesCards.storytellers(base)}
     ${gamesCards.scripts(base)}
     ${gamesCards.counts(base)}
@@ -1013,6 +1006,14 @@ function perGameTile(types, plays, games) {
 }
 
 // Average length, with the shortest and longest game underneath.
+// How many different people have played in these games (travellers included), and how many sit down in a typical game.
+function playersTile(G) {
+  const keys = new Set(G.flatMap((g) => g.players.map(playerKey)).filter(Boolean));
+  const counts = G.map((g) => g.playerCount || g.players.filter((p) => !p.isTraveller).length).filter(Boolean);
+  const avg = counts.length ? Math.round(counts.reduce((a, b) => a + b, 0) / counts.length) : null;
+  return tile('Players', keys.size, avg ? `about ${avg} at the table per game` : '', 'highlight feature');
+}
+
 function lengthTile(G, o) {
   if (o.avgDays === null || !G.length) return tile('Average game length', '–');
   const days = G.map((g) => g.days || 0);
@@ -1066,6 +1067,20 @@ function awardTiles(base) {
   return out.length ? `<div class="tiles awards">${out.join('')}</div>` : '';
 }
 
+// Playstyles: the awards, everyone at the table, the nominations / votes scatter and win rates. The player, character
+// and type pickers don't apply here (they're hidden on this tab).
+function stylesView() {
+  if (!state.games.length) return noGames();
+  const base = baseGames();
+  const T = talk(base);
+  // Win rates, most-played first (rather than ranked by win rate). Travellers count, as on the player page.
+  const rows = playerRows(base).filter((p) => p.games >= 5 && !isHidden(p.key));
+  const winCard = card('Win rates', 'Players with 5+ games. Click a column to sort.', sortable('ps-wins', [colPlayer(), colNum('Games', (p) => p.games),
+    colRate('Overall', (p) => p.winRate, (p) => p.games, 'neutral'), colRate('As good', (p) => p.goodWinRate, (p) => p.goodGames, 'good'), colRate('As evil', (p) => p.evilWinRate, (p) => p.evilGames, 'evil')],
+  rows, { sort: 1, empty: 'Not enough games yet.' }), 'wide');
+  return `${awardTiles(base)}<div class="grid stack">${talkChartCard(T, state.talkView, talkHelpers())}${scatterCard(T, state.scatterView, talkHelpers())}${winCard}</div>`;
+}
+
 function statsView() {
   if (!state.games.length) return `<div class="empty card"><h2>No games recorded yet</h2><p>Keep botc.app open in a tab while you play. Each game is saved automatically when the storyteller reveals the grimoire.</p><p class="muted">Already have data? Import it from Data &amp; settings.</p></div>`;
   if (privateNotice()) return privateNotice();
@@ -1079,7 +1094,6 @@ function statsView() {
   const severalChars = holdersOnly && sel.characters.length > 1;
   const o = outcome(G), ob = outcome(base);
   const st = seatSel ? seatStats(seats) : null;
-  const top = hasSelection(sel) ? null : topWinRate(base);
   const onePlayer = sel.players.length === 1 ? sel.players[0] : null;
   const storytold = onePlayer ? (storytellerTable(base).find((r) => r.key === onePlayer) || { games: 0 }).games : 0;
   const held = sel.players.length && (sel.characters.length || sel.types.length);
@@ -1120,7 +1134,7 @@ function statsView() {
   ] : [
     tile('Games', o.n, G.length ? `${fmtDate(G[G.length - 1].endedAt)} – ${fmtDate(G[0].endedAt)}` : '', 'hero'),
     lengthTile(G, o),
-    top ? tile('Highest win rate', `<span style="font-size:${Math.min(1, 11 / Math.max(1, [...top.name].length)).toFixed(2)}em">${playerLink(top.key, top.name)}</span>`, `won ${pct(top.winRate)} of ${plural(top.plays, 'game')}`, 'highlight feature') : '',
+    playersTile(G),
   ];
   const pr = wantsPrediction(G, base, sel) ? predictOutcome(base, sel.characters, { tune: tunedFor(base) }) : null;
   if (pr) {
@@ -1143,8 +1157,7 @@ function statsView() {
   const more = G.length ? `<p class="see-games"><button class="btn" data-tab="games">See ${G.length === 1 ? 'this game' : `these ${G.length} games`} →</button></p>` : '';
   // With no filters the Games tile already says how many games there are, so the line would only repeat it.
   const lead = anyFilter(sel) ? summaryLine(G, base, sel).replace('class="summary"', 'class="summary lead"') : '';
-  const awards = !hasSelection(sel) && G.length ? awardTiles(base) : '';
-  return `${lead}<div class="tiles">${tiles.join('')}</div>${awards}${sections}${more}`;
+  return `${lead}<div class="tiles">${tiles.join('')}</div>${sections}${more}`;
 }
 
 // ---------- filters & dropdowns ----------
@@ -1220,7 +1233,8 @@ function render() {
   if (gate) { $('#filters').hidden = true; $('#view').innerHTML = signInView(); return; }
   document.querySelectorAll('[data-tab]').forEach((b) => { if (b.closest('.tabs')) b.setAttribute('aria-selected', String(b.dataset.tab === state.tab)); });
   $('#filters').hidden = state.tab === 'data';
-  const views = { stats: statsView, games: gamesView, data: () => renderData(ctx, selectGames(baseGames(), state.sel)) };
+  document.body.classList.toggle('tab-styles', state.tab === 'styles');
+  const views = { stats: statsView, styles: stylesView, games: gamesView, data: () => renderData(ctx, selectGames(baseGames(), state.sel)) };
   keepOpenForms(() => { $('#view').innerHTML = (state.tab !== 'data' ? connectCard() : '') + views[state.tab](); });
   // Editors' account list loads the first time Data & settings is opened.
   mountClaimPicker();
