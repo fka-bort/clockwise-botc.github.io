@@ -147,3 +147,58 @@ export function nominationPairs(games, key) {
     .sort((a, b) => b.n - a.n || b.perGame - a.perGame || a.name.localeCompare(b.name));
   return { nominates: finish(made), nominatedBy: finish(got) };
 }
+
+// Who `key` votes against most (votes on nominations of each player), and who votes against them most.
+// A chance is a nomination of the target on a day the voter was alive (the target is alive, being nominated), in
+// games recorded from the start. Each pair's rate is set against the voter's usual voting rate (every nomination they
+// could vote on), since some people vote on almost everything. Rates are pulled toward that usual rate by a few
+// pretend chances (VOTE_SHRINK), and pairs with fewer than `minChances` chances are left out.
+const VOTE_SHRINK = 3;
+export function votePairs(games, key, { minChances = 3 } = {}) {
+  // Everyone's usual voting rate, over all usable games.
+  const usual = new Map();
+  for (const r of seatRecords(games)) {
+    const u = usual.get(r.key) || { votes: 0, chances: 0 };
+    u.votes += r.votes; u.chances += r.chances;
+    usual.set(r.key, u);
+  }
+  const baseOf = (k) => { const u = usual.get(k); return u && u.chances ? u.votes / u.chances : null; };
+  const against = new Map(), by = new Map(); // other → { key, name, votes, chances }
+  const bump = (m, p, voted) => {
+    const k = playerKey(p);
+    const r = m.get(k) || { key: k, name: displayName(k, p.username), votes: 0, chances: 0 };
+    r.chances++; if (voted) r.votes++;
+    m.set(k, r);
+  };
+  for (const g of games) {
+    if (g.joinedAtPhase || !g.days) continue;
+    const me = g.players.find((p) => playerKey(p) === key);
+    if (!me || me.isTraveller) continue;
+    const last = lastDays(g);
+    const bySeat = new Map(g.players.map((p) => [p.seat, p]));
+    for (const n of g.nominations || []) {
+      if (n.type === 'exile' || n.completed === false) continue;
+      const d = dayOf(n);
+      const target = bySeat.get(n.nomineeSeat);
+      if (!d || !target) continue;
+      const voters = new Set((n.voters || []).map((v) => v.seat));
+      const alive = (p) => { const l = last.get(p.seat); return l !== null && l !== undefined && d <= l; };
+      if (target.seat !== me.seat) {
+        if (playerKey(target) && !target.isTraveller && alive(me)) bump(against, target, voters.has(me.seat));
+      } else {
+        for (const p of g.players) {
+          if (p.seat === me.seat || p.isTraveller || !playerKey(p) || !alive(p)) continue;
+          bump(by, p, voters.has(p.seat));
+        }
+      }
+    }
+  }
+  const finish = (m, baseKey) => [...m.values()].filter((r) => r.chances >= minChances).map((r) => {
+    const base = baseOf(baseKey(r));
+    const rate = r.votes / r.chances;
+    const shrunk = base === null ? rate : (r.votes + VOTE_SHRINK * base) / (r.chances + VOTE_SHRINK);
+    return { ...r, rate, base, shrunk, gap: base === null ? null : shrunk - base };
+  }).sort((a, b) => (b.gap ?? -1) - (a.gap ?? -1) || b.chances - a.chances || a.name.localeCompare(b.name));
+  // Against: my votes, so my usual rate. By: their votes, so each voter's own usual rate.
+  return { against: finish(against, () => key), by: finish(by, (r) => r.key), usual: baseOf(key) };
+}

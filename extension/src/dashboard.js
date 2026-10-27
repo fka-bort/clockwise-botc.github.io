@@ -5,7 +5,7 @@ import { communityConfig, communityName, gameCommunity, NONE, DEFAULTS } from '.
 import { esc, pct, cap, plural, fmtDate, fmtTime, phaseLabel, teamLabel, teamOne, asType, isEvilTeam, playerLink as uiPlayerLink, charLink, typeLink, rateCell, delta, splitBars, legendGE, tile, card, table, pie, rings, rangeBar, fitted } from './ui.js';
 import { renderData, handleDataClick, handleImport } from './dataview.js';
 import { playstylesView, STYLE_SIDES } from './playstylesview.js';
-import { tableTalk, nominationPairs, MEASURES } from './tabletalk.js';
+import { tableTalk, nominationPairs, votePairs, MEASURES } from './tabletalk.js';
 import { talkCell, talkChartCard, talkChartBody, talkChartNote, talkChartSub } from './tabletalkview.js';
 import { renderGrimoire } from './grimoire.js';
 import { makeImages } from './images.js';
@@ -681,6 +681,22 @@ function pairsCards(base, key) {
     + card('Nominated most by', `Who nominates ${name} most.`, sortable('p-nominated-by', cols('Nominator'), nominatedBy, { sort: 1, empty: 'Never nominated in a recorded game yet.' }));
 }
 
+// Who they vote against most, and who votes against them most: each pair's rate next to the voter's usual rate.
+function votePairCards(base, key) {
+  const { against, by, usual } = votePairs(base, key);
+  const name = nameOf(key);
+  const pts = (d) => { const v = Math.round(d * 100); return v === 0 ? '<span class="muted">±0</span>' : `<span class="delta ps-dir">${v > 0 ? '▲' : '▼'} ${Math.abs(v)} pts</span>`; };
+  // Rate bar with a tick at the voter's usual rate.
+  const rateCol = (tip) => ({ label: 'Voted', value: (r) => r.rate, cell: (r) => td(`<div class="rate" data-tip="${esc(tip(r))}"><b>${pct(r.rate)}</b><div class="meter at"><i style="width:${Math.max(r.rate * 100, 1)}%"></i>${r.base === null ? '' : `<em style="left:${r.base * 100}%"></em>`}</div></div>`) });
+  const cols = (who, tip) => [colPlayer(who), colNum('Chances', (r) => r.chances), rateCol(tip), { label: 'vs. usual', num: true, value: (r) => r.gap, cell: (r) => td(r.gap === null ? '–' : pts(r.gap), true) }];
+  const tipAgainst = (r) => `${name} voted on ${r.votes} of ${plural(r.chances, 'nomination')} of ${r.name} while alive (${pct(r.rate)})\nUsually votes on ${pct(r.base)} of nominations\nThe tick marks the usual rate`;
+  const tipBy = (r) => `${r.name} voted on ${r.votes} of ${plural(r.chances, 'nomination')} of ${name} while alive (${pct(r.rate)})\n${r.name} usually votes on ${pct(r.base)} of nominations\nThe tick marks their usual rate`;
+  return card('Votes against most', `How often ${esc(name)} votes on each player's nominations, next to their usual ${pct(usual)} (the tick). Chances: nominations of that player while ${esc(name)} was alive (at least 3). Hover for counts.`,
+    sortable('p-votes-against', cols('Nominee', tipAgainst), against, { sort: 3, empty: 'Not enough nominations together yet.' }))
+    + card('Voted against most by', `How often each player votes on ${esc(name)}'s nominations, next to how often that player usually votes (the tick). Chances: nominations of ${esc(name)} while they were alive (at least 3).`,
+      sortable('p-voted-by', cols('Voter', tipBy), by, { sort: 3, empty: 'Not nominated often enough yet.' }));
+}
+
 function playerSections(G, sel, seats, base) {
   const st = seatStats(seats);
   const label = seatsLabel(sel);
@@ -728,6 +744,7 @@ function playerSections(G, sel, seats, base) {
       <div><b>${pct(noms.voteAccuracy)}</b><span>of their votes were on evil players</span></div></div>`));
     out.push(talkCard(base, key));
     out.push(pairsCards(base, key));
+    out.push(votePairCards(base, key));
     if (st.byScript.length > 1) out.push(card('By script', '', rateRows(st.byScript.map((s) => [esc(s.key), s.winRate, s.plays, 'neutral']), 'sel-scripts')));
     if (state.filters.communities.length !== 1 && st.byCommunity.length > 1) out.push(card('By community', '', rateRows(st.byCommunity.map((s) => [esc(communityName(state.settings, s.key)), s.winRate, s.plays, 'neutral']), 'sel-communities')));
   } else {
