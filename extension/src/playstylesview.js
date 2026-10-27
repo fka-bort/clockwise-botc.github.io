@@ -142,6 +142,18 @@ function nominationsCard(R, h) {
   return card(title, sub, h.sortable(`ps-noms-${side}`, cols, rows, { sort: side === 'good' ? 5 : 4 }), 'wide');
 }
 
+// ---------- at the table ----------
+// Everyone ranked on the same four measures as the player page, for the side picked at the top.
+function talkTable(side, h) {
+  const T = h.talk[side];
+  const rows = T.players.filter((p) => p.ranked);
+  const sideWord = side === 'all' ? '' : `as ${side}`;
+  const col = (id, label) => ({ label, value: (p) => p.rates[id].value, cell: (p) => `<td>${h.talkCell(T, p, id, sideWord)}</td>` });
+  const sub = `Per day alive, for players with ${T.minGames}+ games${sideWord ? ` ${sideWord}` : ''}${side === 'all' ? '' : ' (only games where they kept one alignment the whole game)'}. Each bar is their rank among these ${T.ranked} players. Click a column to sort.`;
+  return card('At the table', sub, h.sortable(`ps-talk-${side}`, [h.colPlayer(), h.colNum('Games', (p) => p.games),
+    col('loud', 'Nominations / day'), col('nominated', 'Nominated / day'), col('voter', 'Votes while alive'), col('life', 'Share of game alive')], rows, { sort: 2, empty: 'Not enough games yet.' }), 'wide');
+}
+
 // ---------- the page ----------
 // h: { side, selected (player keys), playerLink, sortable, colPlayer, colNum, colRate }
 export function playstylesView(games, h) {
@@ -165,6 +177,7 @@ export function playstylesView(games, h) {
   ];
 
   const out = [];
+  out.push(talkTable(side, h));
   if (R.groups.length) {
     const sub = `Players close together play alike. Each axis blends the rates that differ most between players. The ${plural(R.groups.length, 'group')} are ${clarity(R.silhouette)}. Click a player for their stats.`;
     out.push(card('Player map', sub, `${groupLegend(R)}<div class="ps-scroll">${mapSvg(R, h.selected)}</div>`, 'wide ps-map-card'));

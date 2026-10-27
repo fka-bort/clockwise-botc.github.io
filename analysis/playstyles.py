@@ -108,7 +108,9 @@ def load_csv_export(folder: str | Path, include_excluded: bool = False) -> list[
             continue
         day, night = num(r.died_day), tf(r.died_at_night)
         survived = tf(r.survived)
+        changed = tf(r.role_changed)
         g["players"].append(dict(seat=num(r.seat), username=r.player, userId=r.user_id or None, roleId=r.role_id, roleName=r.role,
+                                 startingRoleId=(r.starting_role.lower().replace(" ", "").replace("'", "") or "unknown") if changed else r.role_id,
                                  team=r.team or None, alignment=r.alignment or None, isTraveller=tf(r.traveller), survived=survived,
                                  diedPhase=(2 * day - (1 if night else 0)) if day else None, won=tf(r.won)))
         if not survived and not day:
