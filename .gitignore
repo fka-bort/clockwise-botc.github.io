@@ -5,3 +5,5 @@ store/*.zip
 .venv/
 __pycache__/
 .ipynb_checkpoints/
+# Real game exports stay on your computer.
+analysis/data/

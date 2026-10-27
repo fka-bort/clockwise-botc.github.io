@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from pathlib import Path
 
 import numpy as np
@@ -75,18 +76,91 @@ def load_games(path: str | Path, include_excluded: bool = False) -> list[dict]:
     return [g for g in games if include_excluded or not g.get("excluded")]
 
 
+def _find(folder: Path, pattern: str) -> Path:
+    found = sorted(folder.glob(pattern))
+    if not found:
+        raise FileNotFoundError(f"No {pattern} in {folder}")
+    return found[-1]  # the latest export if there are several
+
+
+def load_csv_export(folder: str | Path, include_excluded: bool = False) -> list[dict]:
+    """The dashboard's CSV export (games, game_players, nominations, deaths) rebuilt into game records like the JSON.
+
+    The CSVs carry a little less than the JSON: nominations have a day rather than a phase (executions happen in the
+    day, so day d is phase 2d), voters are names rather than seats (matched to seats by name within the game), and
+    whether the recording started late isn't stored (a death with no day means it did).
+    """
+    folder = Path(folder)
+    read = lambda pat: pd.read_csv(_find(folder, pat), dtype=str, keep_default_na=False)
+    G, GP, N, D = read("*games-*.csv"), read("*game_players*.csv"), read("*nominations*.csv"), read("*deaths*.csv")
+    tf = lambda v: str(v).lower() == "true"
+    num = lambda v: int(float(v)) if str(v).strip() not in ("", "nan") else None
+    ms = lambda v: int(pd.Timestamp(v).timestamp() * 1000) if v else None
+    games = {}
+    for r in G.itertuples(index=False):
+        games[r.game_id] = dict(id=r.game_id, community=r.community, endedAt=ms(r.ended_at), startedAt=ms(r.started_at),
+                                script={"name": r.script_name, "id": r.script_id}, winner=r.winner, days=num(r.days),
+                                storytellers=[{"username": s.strip()} for s in r.storytellers.split(",") if s.strip()],
+                                excluded=tf(r.excluded), players=[], nominations=[], deaths=[], joinedAtPhase=0)
+    for r in GP.itertuples(index=False):
+        g = games.get(r.game_id)
+        if not g:
+            continue
+        day, night = num(r.died_day), tf(r.died_at_night)
+        survived = tf(r.survived)
+        g["players"].append(dict(seat=num(r.seat), username=r.player, userId=r.user_id or None, roleId=r.role_id, roleName=r.role,
+                                 team=r.team or None, alignment=r.alignment or None, isTraveller=tf(r.traveller), survived=survived,
+                                 diedPhase=(2 * day - (1 if night else 0)) if day else None, won=tf(r.won)))
+        if not survived and not day:
+            g["joinedAtPhase"] = 1  # someone died before recording started
+    for r in D.itertuples(index=False):
+        g = games.get(r.game_id)
+        if g:
+            ph = num(r.phase)
+            g["deaths"].append(dict(seat=num(r.seat), phase=ph, day=num(r.day), atNight=tf(r.at_night) if ph else None))
+    for r in N.itertuples(index=False):
+        g = games.get(r.game_id)
+        if not g:
+            continue
+        by_name = {p["username"]: p["seat"] for p in g["players"]}
+        voters = [{"seat": by_name.get(v.strip()), "username": v.strip()} for v in r.voters.split(", ") if v.strip()]
+        day = num(r.day)
+        g["nominations"].append(dict(day=day, phase=2 * day if day else None, nominatorSeat=num(r.nominator_seat),
+                                     nomineeSeat=num(r.nominee_seat), type=r.type, completed=tf(r.completed),
+                                     votes=num(r.votes), majority=num(r.majority), voters=voters))
+    return [g for g in games.values() if include_excluded or not g["excluded"]]
+
+
+def load_any(path: str | Path) -> list[dict]:
+    """A folder of CSV exports, or a JSON export / the sample data."""
+    path = Path(path)
+    return load_csv_export(path) if path.is_dir() else load_games(path)
+
+
 def player_key(p: dict) -> str | None:
     if p.get("userId"):
         return p["userId"]
     return f"name:{p['username'].lower()}" if p.get("username") else None
 
 
+INVISIBLE = re.compile("[\u00AD\u034F\u061C\u115F\u1160\u17B4\u17B5\u180E\u200B-\u200F\u202A-\u202E\u2060-\u206F\u3164\uFEFF\uFFA0]")
+
+
+# Emoji and other symbols outside the basic plane: matplotlib can't draw them, so charts would show empty boxes.
+EMOJI = re.compile("[\U00010000-\U0010FFFF\u2600-\u27BF\uFE0F\u2B00-\u2BFF]")
+
+
+def clean_name(name: str | None, strip_emoji: bool = True) -> str:
+    name = INVISIBLE.sub("", name or "")
+    return (EMOJI.sub("", name) if strip_emoji else name).strip() or (name or "").strip()
+
+
 def display_names(games: list[dict]) -> dict[str, str]:
-    """Each account under the name it used most (like the dashboard)."""
+    """Each account under the name it used most (like the dashboard); invisible characters removed."""
     counts: dict[str, dict[str, int]] = {}
     for g in games:
         for p in g.get("players", []) + g.get("storytellers", []):
-            k, n = player_key(p), (p.get("username") or "").strip()
+            k, n = player_key(p), clean_name(p.get("username"))
             if k and n:
                 counts.setdefault(k, {}).setdefault(n, 0)
                 counts[k][n] += 1
