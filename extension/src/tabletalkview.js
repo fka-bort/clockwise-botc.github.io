@@ -95,7 +95,7 @@ export const talkChartSub = (talk, view) => `Players with ${talk[view.side].minG
 
 export function talkChartCard(talk, view, h) {
   const select = (attr, options, cur, label) => `<select ${attr} aria-label="${label}">${options.map(([v, l]) => `<option value="${v}"${v === cur ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
-  const controls = `<div class="tt-controls">${select('data-talk-measure', Object.entries(MEASURES).map(([k, x]) => [k, x.label]), view.measure, 'Measure')}${select('data-talk-side', TALK_SIDES, view.side, 'Games')}<div data-ms-talk></div></div>`;
+  const controls = `<div class="tt-controls">${select('data-talk-measure', Object.entries(MEASURES).map(([k, x]) => [k, x.label]), view.measure, 'Measure')}<div data-ms-talk></div></div>`;
   return card('At the table', talkChartSub(talk, view), `${controls}<p class="tt-note small muted" id="tt-note">${esc(talkChartNote(talk, view, h))}</p><div class="tt-chart" id="tt-chart">${talkChartBody(talk, view, h)}</div>`, 'wide tt-chart-card');
 }
 
@@ -166,7 +166,7 @@ export function scatterSvg(talk, view, h) {
 export function scatterCard(talk, view, h) {
   const T = talk[view.side];
   const select = (attr, options, cur, label) => `<select ${attr} aria-label="${label}">${options.map(([v, l]) => `<option value="${v}"${v === cur ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
-  const controls = `<div class="tt-controls">${select('data-scatter-kind', SCATTER_KINDS, view.kind, 'Chart')}${select('data-scatter-side', TALK_SIDES, view.side, 'Games')}</div>`;
+  const controls = `<div class="tt-controls">${select('data-scatter-kind', SCATTER_KINDS, view.kind, 'Chart')}</div>`;
   const what = view.kind === 'noms' ? 'nominations per day alive' : 'share of nominations they voted on while alive';
   const sub = `Across: ${what}. Up: share on the other team. Dashed lines: the average. Players with ${T.minGames}+ games${view.side === 'all' ? '' : ` ${sideWords(view.side)}`}; hover a dot for the counts.`;
   return card(view.kind === 'noms' ? 'Who they nominate' : 'Who they vote for', sub, `${controls}<div class="sc-wrap">${scatterSvg(talk, view, h)}</div>`, 'wide sc-card');

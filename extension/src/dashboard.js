@@ -6,7 +6,7 @@ import { esc, pct, cap, plural, fmtDate, fmtTime, phaseLabel, teamLabel, teamOne
 import { renderData, handleDataClick, handleImport } from './dataview.js';
 import { playstyles } from './playstyles.js';
 import { tableTalk, nominationPairs, votePairs, MEASURES } from './tabletalk.js';
-import { talkCell, talkChartCard, talkChartBody, talkChartNote, talkChartSub, scatterCard } from './tabletalkview.js';
+import { talkCell, talkChartCard, talkChartBody, talkChartNote, talkChartSub, scatterCard, TALK_SIDES } from './tabletalkview.js';
 import { renderGrimoire } from './grimoire.js';
 import { makeImages } from './images.js';
 import { characterToken, installTokenStyle } from './tokens.js';
@@ -30,7 +30,8 @@ const prefs = (() => { try { return JSON.parse(localStorage.getItem('dash.prefs'
 const state = {
   tab: readTab(),
   talkView: { measure: 'loud', side: 'all', added: [] }, // main page's At the table chart: measure, games, players added by hand
-  scatterView: { kind: 'noms', side: 'all' }, // main page's nominations / votes scatter
+  scatterView: { kind: 'noms', side: 'all' }, // Playstyles nominations / votes scatter
+  styleSide: 'all', // Playstyles: one toggle (all games, as good, as evil) for the chart, the scatter and win rates
   filters: { communities: Array.isArray(prefs.communities) ? prefs.communities : [], script: '', storyteller: '', days: '' },
   sel: readHash(),
   expanded: new Set(),
@@ -1073,12 +1074,18 @@ function stylesView() {
   if (!state.games.length) return noGames();
   const base = baseGames();
   const T = talk(base);
-  // Win rates, most-played first (rather than ranked by win rate). Travellers count, as on the player page.
-  const rows = playerRows(base).filter((p) => p.games >= 5 && !isHidden(p.key));
-  const winCard = card('Win rates', 'Players with 5+ games. Click a column to sort.', sortable('ps-wins', [colPlayer(), colNum('Games', (p) => p.games),
-    colRate('Overall', (p) => p.winRate, (p) => p.games, 'neutral'), colRate('As good', (p) => p.goodWinRate, (p) => p.goodGames, 'good'), colRate('As evil', (p) => p.evilWinRate, (p) => p.evilGames, 'evil')],
-  rows, { sort: 1, empty: 'Not enough games yet.' }), 'wide');
-  return `${awardTiles(base)}<div class="grid stack">${talkChartCard(T, state.talkView, talkHelpers())}${scatterCard(T, state.scatterView, talkHelpers())}${winCard}</div>`;
+  const side = state.styleSide;
+  state.talkView.side = side;
+  state.scatterView.side = side;
+  const toggle = `<div class="ps-toolbar"><div class="toggles" role="group" aria-label="Which games">${TALK_SIDES.map(([v, l]) => `<button class="toggle" data-style-side="${v}" aria-pressed="${v === side}">${l}</button>`).join('')}</div></div>`;
+  // Win rates for the picked games, most-played first (rather than ranked by win rate). Travellers count, as on the
+  // player page; 5+ games overall or 3+ on a side.
+  const pick = { all: [(p) => p.games, (p) => p.winRate, 'neutral', 5], good: [(p) => p.goodGames, (p) => p.goodWinRate, 'good', 3], evil: [(p) => p.evilGames, (p) => p.evilWinRate, 'evil', 3] }[side];
+  const [n, rate, cls, min] = pick;
+  const rows = playerRows(base).filter((p) => n(p) >= min && !isHidden(p.key));
+  const winCard = card('Win rates', `Players with ${min}+ games${side === 'all' ? '' : ` as ${side}`}. Click a column to sort.`, sortable(`ps-wins-${side}`, [colPlayer(), colNum('Games', n),
+    colRate('Win rate', rate, n, cls)], rows, { sort: 1, empty: 'Not enough games yet.' }), 'wide');
+  return `${awardTiles(base)}${toggle}<div class="grid stack">${talkChartCard(T, state.talkView, talkHelpers())}${scatterCard(T, state.scatterView, talkHelpers())}${winCard}</div>`;
 }
 
 function statsView() {
@@ -1482,7 +1489,7 @@ async function updateLocal(id, patch, resend) {
 
 // ---------- events ----------
 document.addEventListener('click', async (e) => {
-  const t = e.target.closest('[data-gview],[data-gmenu],[data-sort-table],[data-filter-community],[data-game-community],[data-add-player],[data-add-char],[data-add-type],[data-expand],[data-more-games],[data-delete],[data-action],[data-export],[data-clear-room],[data-fallback],[data-tab],#clear-sel');
+  const t = e.target.closest('[data-gview],[data-gmenu],[data-sort-table],[data-filter-community],[data-game-community],[data-add-player],[data-add-char],[data-add-type],[data-expand],[data-more-games],[data-delete],[data-action],[data-export],[data-clear-room],[data-fallback],[data-tab],[data-style-side],#clear-sel');
   if (!t) return;
   // Under an open game: switch between seat-by-seat and nominations, or show the settings. No full redraw,
   // so the grimoire stays put.
@@ -1523,6 +1530,7 @@ document.addEventListener('click', async (e) => {
     await load();
     return;
   }
+  if (t.dataset.styleSide) { state.styleSide = t.dataset.styleSide; render(); return; }
   if (t.dataset.tab) { state.tab = t.dataset.tab; state.openGame = null; writeHash(); render(); window.scrollTo(0, 0); return; }
   if (t.id === 'clear-sel') { setSelection((s) => Object.assign(s, emptySelection())); return; }
   if (t.dataset.addPlayer) { state.tab = 'stats'; addTo('players', t.dataset.addPlayer); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }

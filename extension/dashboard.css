@@ -625,3 +625,5 @@ body.tab-styles [data-ms="players"], body.tab-styles [data-ms="characters"], bod
 .sc.side-good .sc-pt circle:last-child { fill: var(--good); }
 .sc.side-evil .sc-pt circle:last-child { fill: var(--evil); }
 .sc.side-good .sc-pt.me circle:last-child, .sc.side-evil .sc-pt.me circle:last-child { fill: var(--ink); }
+/* Playstyles: the one games toggle under the awards. */
+.ps-toolbar { display: flex; margin: 0 0 18px; }
