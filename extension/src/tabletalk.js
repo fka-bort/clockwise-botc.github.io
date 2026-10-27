@@ -19,7 +19,7 @@ import { playerKey, displayName } from './stats.js';
 import { ALL_CHARACTERS } from './characters.js';
 
 export const MIN_GAMES = { all: 5, good: 3, evil: 3 };
-const SHRINK = { perDay: 8, votes: 20, life: 3 }; // pretend days, vote chances, games
+const SHRINK = { perDay: 8, votes: 20, life: 3, other: 5 }; // pretend days, vote chances, games, nominations
 const TEAM_OF = new Map(ALL_CHARACTERS.map(([id, , team]) => [id, team]));
 const homeSide = (team) => (team === 'townsfolk' || team === 'outsider' ? 'good' : team === 'minion' || team === 'demon' ? 'evil' : null);
 const dayOf = (n) => n.day || (n.phase ? Math.ceil(n.phase / 2) : null);
@@ -49,6 +49,8 @@ export function seatRecords(games) {
     if (g.joinedAtPhase || !g.days) continue;
     const last = lastDays(g);
     const noms = (g.nominations || []).filter((n) => n.type !== 'exile');
+    const bySeat = new Map(g.players.map((x) => [x.seat, x]));
+    const sideOf = (seat) => { const x = bySeat.get(seat); return x && (x.alignment === 'good' || x.alignment === 'evil') ? x.alignment : null; };
     for (const p of g.players) {
       const key = playerKey(p);
       const alive = last.get(p.seat);
@@ -56,14 +58,24 @@ export function seatRecords(games) {
       // A starting character we don't know the team of (a homebrew one) can't be checked, so that game is left out.
       const changed = p.startingRoleId && p.startingRoleId !== p.roleId;
       const steady = homeSide(p.team) === p.alignment && (!changed || homeSide(TEAM_OF.get(p.startingRoleId)) === p.alignment);
-      const r = { g, p, key, side: p.alignment, steady, days: Math.max(alive, 0), gameDays: g.days, made: 0, received: 0, votes: 0, chances: 0 };
+      // madeOn / votedOn: nominations they made (or voted on) where the nominee's alignment is known; …Other: of those,
+      // on a player of the other team (by the alignments both ended the game with).
+      const r = { g, p, key, side: p.alignment, steady, days: Math.max(alive, 0), gameDays: g.days, made: 0, received: 0, votes: 0, chances: 0,
+        madeOn: 0, madeOther: 0, votedOn: 0, votedOther: 0 };
       for (const n of noms) {
         const d = dayOf(n);
-        if (n.nominatorSeat === p.seat) r.made++;
+        const target = sideOf(n.nomineeSeat);
+        if (n.nominatorSeat === p.seat) {
+          r.made++;
+          if (target) { r.madeOn++; if (target !== p.alignment) r.madeOther++; }
+        }
         if (n.nomineeSeat === p.seat) r.received++;
         if (d && d <= alive && n.completed !== false) {
           r.chances++;
-          if ((n.voters || []).some((v) => v.seat === p.seat)) r.votes++;
+          if ((n.voters || []).some((v) => v.seat === p.seat)) {
+            r.votes++;
+            if (target && n.nomineeSeat !== p.seat) { r.votedOn++; if (target !== p.alignment) r.votedOther++; }
+          }
         }
       }
       out.push(r);
@@ -72,9 +84,10 @@ export function seatRecords(games) {
   return out;
 }
 
-const blank = () => ({ games: 0, days: 0, made: 0, received: 0, votes: 0, chances: 0, life: 0 });
+const blank = () => ({ games: 0, days: 0, made: 0, received: 0, votes: 0, chances: 0, life: 0, madeOn: 0, madeOther: 0, votedOn: 0, votedOther: 0 });
 function add(t, r) {
   t.games++; t.days += r.days; t.made += r.made; t.received += r.received; t.votes += r.votes; t.chances += r.chances;
+  t.madeOn += r.madeOn; t.madeOther += r.madeOther; t.votedOn += r.votedOn; t.votedOther += r.votedOther;
   t.life += r.days / r.gameDays;
 }
 // The measures: how to get [count, exposure] from a tally, how much to shrink, and how to show values and gaps.
@@ -87,6 +100,10 @@ export const MEASURES = {
     counts: (t) => `nominated ${t.received} times in ${t.days} days alive` },
   voter: { label: 'Votes on nominations while alive', get: (t) => [t.votes, t.chances], shrink: SHRINK.votes, ...share,
     counts: (t) => `voted on ${t.votes} of ${t.chances} nominations while alive` },
+  nomOther: { label: 'Nominations on the other team', get: (t) => [t.madeOther, t.madeOn], shrink: SHRINK.other, ...share,
+    counts: (t) => `${t.madeOther} of ${t.madeOn} nominations were on the other team` },
+  voteOther: { label: 'Votes on the other team', get: (t) => [t.votedOther, t.votedOn], shrink: SHRINK.votes, ...share,
+    counts: (t) => `${t.votedOther} of ${t.votedOn} votes were on the other team` },
   life: { label: 'Share of the game alive', get: (t) => [t.life, t.games], shrink: SHRINK.life, ...share,
     counts: (t) => `alive for ${Math.round((t.life / (t.games || 1)) * 100)}% of the days on average, over ${t.games} games` },
 };

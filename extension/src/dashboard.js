@@ -6,7 +6,7 @@ import { esc, pct, cap, plural, fmtDate, fmtTime, phaseLabel, teamLabel, teamOne
 import { renderData, handleDataClick, handleImport } from './dataview.js';
 import { playstyles } from './playstyles.js';
 import { tableTalk, nominationPairs, votePairs, MEASURES } from './tabletalk.js';
-import { talkCell, talkChartCard, talkChartBody, talkChartNote, talkChartSub } from './tabletalkview.js';
+import { talkCell, talkChartCard, talkChartBody, talkChartNote, talkChartSub, scatterCard } from './tabletalkview.js';
 import { renderGrimoire } from './grimoire.js';
 import { makeImages } from './images.js';
 import { characterToken, installTokenStyle } from './tokens.js';
@@ -30,6 +30,7 @@ const prefs = (() => { try { return JSON.parse(localStorage.getItem('dash.prefs'
 const state = {
   tab: readTab(),
   talkView: { measure: 'loud', side: 'all', added: [] }, // main page's At the table chart: measure, games, players added by hand
+  scatterView: { kind: 'noms', side: 'all' }, // main page's nominations / votes scatter
   filters: { communities: Array.isArray(prefs.communities) ? prefs.communities : [], script: '', storyteller: '', days: '' },
   sel: readHash(),
   expanded: new Set(),
@@ -390,6 +391,7 @@ function overallSections(base) {
     ${gamesCards.playerCount(base)}
     ${gamesCards.players(base)}
     ${talkChartCard(talk(base), state.talkView, talkHelpers())}
+    ${scatterCard(talk(base), state.scatterView, talkHelpers())}
     ${st ? storytellerCompareCard(nameOf(st), base, others) : gamesCards.storytellers(base)}
     ${gamesCards.scripts(base)}
     ${gamesCards.counts(base)}
@@ -1536,6 +1538,11 @@ document.addEventListener('toggle', (e) => {
 
 document.addEventListener('change', async (e) => {
   const t = e.target;
+  if (t.dataset.scatterKind !== undefined || t.dataset.scatterSide !== undefined) {
+    if (t.dataset.scatterKind !== undefined) state.scatterView.kind = t.value; else state.scatterView.side = t.value;
+    render();
+    return;
+  }
   if (t.dataset.talkMeasure !== undefined || t.dataset.talkSide !== undefined) {
     if (t.dataset.talkMeasure !== undefined) state.talkView.measure = t.value; else state.talkView.side = t.value;
     refreshTalkChart();
