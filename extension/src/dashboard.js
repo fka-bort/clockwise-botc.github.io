@@ -1045,31 +1045,48 @@ function gamesView() {
   return `${summaryLine(G, base, state.sel)}${G.length ? gamesList(G) : '<div class="card empty"><h2>No games match</h2><p>Try removing a filter.</p></div>'}`;
 }
 
-// Awards on the main page: whose nominations get the most evil players executed (as good), the most good players
-// executed (as evil), and who most often survives to the end. Each rate is pulled toward the table-wide rate as if the
-// player had 5 extra average games, so a lucky handful of games can't win; it needs 5 games as good, 3 as evil or 5
-// overall. Only games recorded from the start count for the nomination awards.
+// Awards: whose nominations get the most evil players executed (as good), the most good players executed (as evil),
+// and who most often survives to the end. Once a player has enough games (5 as good, 3 as evil, 5 overall) it's their
+// own rate that counts, not how many games they've played: a tie is shared rather than going to whoever plays more.
+// Only games recorded from the start count for the nomination awards.
 function awardTiles(base) {
   const best = (side, id) => {
     const R = playstyles(base, side);
-    if (!R.featureIds.includes(id) || !R.players.length) return null;
-    return [...R.players].sort((a, b) => b.values[id].shrunk - a.values[id].shrunk)[0];
+    if (!R.featureIds.includes(id)) return [];
+    const rated = R.players.filter((p) => p.values[id].raw !== null);
+    const top = Math.max(...rated.map((p) => p.values[id].raw));
+    return top > 0 ? rated.filter((p) => Math.abs(p.values[id].raw - top) < 1e-9).sort((a, b) => a.name.localeCompare(b.name)) : [];
   };
-  const fit = (p) => `<span style="font-size:${Math.min(1, 11 / Math.max(1, [...p.name].length)).toFixed(2)}em">${playerLink(p.key, p.name)}</span>`;
+  // One name, or several sharing the award ("Lauren, Mitchell & perzo"); more than three are counted instead.
+  const names = (ps) => {
+    if (ps.length > 3) return `${ps.length} players tie`;
+    const links = ps.map((p) => playerLink(p.key, p.name));
+    const chars = ps.reduce((n, p) => n + [...p.name].length, 0) + (ps.length - 1) * 2;
+    return `<span style="font-size:${Math.min(1, 11 / Math.max(1, chars)).toFixed(2)}em">${links.length > 1 ? `${links.slice(0, -1).join(', ')} &amp; ${links[links.length - 1]}` : links[0]}</span>`;
+  };
   const info = (text) => ` <span class="info" data-tip="${esc(text)}" aria-label="${esc(text)}">ⓘ</span>`;
-  const detective = best('good', 'enemyExecs'), framer = best('evil', 'enemyExecs'), survivor = best('all', 'survived');
   const out = [];
-  if (detective && detective.t.enemyExecs) out.push(tile(`Top detective${info('As good: the most evil players executed from their nominations, per game (5+ games as good).')}`, fit(detective),
-    `${plural(detective.t.enemyExecs, 'evil player')} executed from ${plural(detective.t.noms, 'nomination')} in ${plural(detective.t.tracked, 'game')}`, 'award'));
-  if (framer && framer.t.enemyExecs) out.push(tile(`Top framer${info('As evil: the most good players executed from their nominations, per game (3+ games as evil).')}`, fit(framer),
-    `${plural(framer.t.enemyExecs, 'good player')} executed from ${plural(framer.t.noms, 'nomination')} in ${plural(framer.t.tracked, 'game')}`, 'award'));
-  if (survivor) { const alive = survivor.t.fates.survivedWon + survivor.t.fates.survivedLost;
-    out.push(tile(`Best survivor${info('Alive at the end of the most games (5+ games).')}`, fit(survivor), `alive at the end of ${alive} of ${plural(survivor.t.known, 'game')}`, 'award')); }
+  const detective = best('good', 'enemyExecs');
+  if (detective.length) {
+    const p = detective[0];
+    out.push(tile(`Top detective${info('As good: the most evil players executed from their nominations, per game (5+ games as good).')}`, names(detective),
+      detective.length > 1 ? `${p.values.enemyExecs.raw.toFixed(2)} evil players executed per game from their nominations` : `${plural(p.t.enemyExecs, 'evil player')} executed from ${plural(p.t.noms, 'nomination')} in ${plural(p.t.tracked, 'game')}`, 'award'));
+  }
+  const framer = best('evil', 'enemyExecs');
+  if (framer.length) {
+    const p = framer[0];
+    out.push(tile(`Top framer${info('As evil: the most good players executed from their nominations, per game (3+ games as evil).')}`, names(framer),
+      framer.length > 1 ? `${p.values.enemyExecs.raw.toFixed(2)} good players executed per game from their nominations` : `${plural(p.t.enemyExecs, 'good player')} executed from ${plural(p.t.noms, 'nomination')} in ${plural(p.t.tracked, 'game')}`, 'award'));
+  }
+  const survivor = best('all', 'survived');
+  if (survivor.length) {
+    const p = survivor[0], alive = p.t.fates.survivedWon + p.t.fates.survivedLost;
+    out.push(tile(`Best survivor${info('Alive at the end of the largest share of their games (5+ games).')}`, names(survivor),
+      survivor.length > 1 ? `alive at the end of ${pct(p.values.survived.raw)} of their games` : `alive at the end of ${alive} of ${plural(p.t.known, 'game')}`, 'award'));
+  }
   return out.length ? `<div class="tiles awards">${out.join('')}</div>` : '';
 }
 
-// Playstyles: the awards, everyone at the table, the nominations / votes scatter and win rates. The player, character
-// and type pickers don't apply here (they're hidden on this tab).
 function stylesView() {
   if (!state.games.length) return noGames();
   const base = baseGames();
