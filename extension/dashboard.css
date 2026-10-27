@@ -553,3 +553,65 @@ form.change-pw .toolbar, form.change-pw .msg { margin: 0; }
 [data-fit] [data-fold] { display: none; }
 /* Characters a player hasn't played yet ("Show all" on Characters played). */
 tr.unplayed td { opacity: .5; }
+
+/* ---------- Playstyles tab ----------
+   Fates (a stacked bar, in game order) and playstyle groups (map markers) each use slots of the validated
+   categorical palette, stepped separately for light and dark. Fates: violet, orange, aqua, yellow, magenta, green
+   (adjacent pairs pass CVD + normal-vision checks in both modes). Groups: blue, orange, aqua (all pairs pass), and
+   a fourth in neutral ink; each group also has its own marker shape and a direct label. */
+:root {
+  --ps-f0: #6250d6; --ps-f1: #eb6834; --ps-f2: #1baf7a; --ps-f3: #eda100; --ps-f4: #e87ba4; --ps-f5: #008300;
+  --ps-g0: #2a78d6; --ps-g1: #eb6834; --ps-g2: #1baf7a; --ps-g3: #5f5070;
+}
+:root:not([data-theme="light"]) {
+  --ps-f0: #9085e9; --ps-f1: #d95926; --ps-f2: #199e70; --ps-f3: #c98500; --ps-f4: #d55181; --ps-f5: #008300;
+  --ps-g0: #3987e5; --ps-g1: #d95926; --ps-g2: #199e70; --ps-g3: #cdbfda;
+}
+/* Characters and types don't apply to playstyles; players still highlight people on the map. */
+body.tab-styles [data-ms="characters"], body.tab-styles [data-ms="types"] { display: none; }
+.ps-head { display: flex; align-items: center; justify-content: space-between; gap: 12px 24px; flex-wrap: wrap; margin: 4px 0 18px; }
+.ps-head .summary.lead { margin: 0; flex: 1 1 420px; }
+.ps-sides { flex: none; }
+
+.sw.ps-f0, .ps-split .ps-f0 { background: var(--ps-f0); }
+.sw.ps-f1, .ps-split .ps-f1 { background: var(--ps-f1); }
+.sw.ps-f2, .ps-split .ps-f2 { background: var(--ps-f2); }
+.sw.ps-f3, .ps-split .ps-f3 { background: var(--ps-f3); }
+.sw.ps-f4, .ps-split .ps-f4 { background: var(--ps-f4); }
+.sw.ps-f5, .ps-split .ps-f5 { background: var(--ps-f5); }
+/* Labels on the lighter segments in dark ink so they stay readable. */
+.ps-split .ps-f2, .ps-split .ps-f3, .ps-split .ps-f4 { color: #1a1324; }
+.ps-split > div { justify-content: center; padding: 0 4px; }
+.ps-split > div:first-child { border-radius: 6px 0 0 6px; }
+.ps-split > div:last-child { border-radius: 0 6px 6px 0; }
+.ps-split > div:only-child { border-radius: 6px; }
+.ps-fates-legend span { cursor: help; }
+.ps-bars { display: grid; }
+.ps-row { padding: 4px 0; }
+.ps-gh { display: flex; align-items: center; gap: 6px; margin: 14px 0 2px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 14px; }
+
+.ps-glyph { width: 15px; height: 15px; vertical-align: -2px; flex: none; }
+.ps-g0 { fill: var(--ps-g0); } .ps-g1 { fill: var(--ps-g1); } .ps-g2 { fill: var(--ps-g2); } .ps-g3 { fill: var(--ps-g3); }
+.ps-legend > span { gap: 6px; }
+.ps-map { display: block; width: 100%; height: auto; overflow: visible; }
+.ps-map .ps-zero { stroke: var(--axis); stroke-width: 1; stroke-dasharray: 3 4; }
+.ps-map .ps-avg { fill: var(--muted); font-size: 11px; }
+.ps-map .ps-axis { fill: var(--ink-2); font-size: 12px; font-weight: 600; }
+.ps-map .ps-label { fill: var(--ink-2); font-size: 11px; pointer-events: none; }
+.ps-map .ps-label.sel { fill: var(--ink); font-weight: 700; font-size: 12px; }
+.ps-map .ps-pt { cursor: pointer; }
+.ps-map .ps-pt > :last-child { stroke: var(--surface); stroke-width: 2; }
+.ps-map .ps-pt:hover > :last-child { stroke: var(--ink); }
+.ps-map .ps-ring { fill: none; stroke: var(--ink); stroke-width: 2; }
+.ps-group h3 { display: flex; align-items: center; gap: 8px; }
+.ps-group h3 .ps-glyph { width: 18px; height: 18px; }
+.ps-traits td:first-child { color: var(--ink-2); }
+.delta.ps-dir { color: var(--ink-2); font-weight: 600; font-size: 12.5px; }
+.ps-members { margin: 12px 0 0; line-height: 1.8; }
+.ps-how summary { cursor: pointer; font-weight: 600; color: var(--ink-2); }
+.ps-how p { color: var(--ink-2); max-width: 80ch; }
+.ps-traits td:first-child { min-width: 9em; }
+.ps-traits td.num { white-space: nowrap; width: 1%; }
+/* On a phone the map keeps a readable size and scrolls sideways inside its card. */
+.ps-scroll { overflow-x: auto; }
+.ps-scroll .ps-map { min-width: 560px; }

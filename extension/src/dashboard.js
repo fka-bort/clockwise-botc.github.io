@@ -4,6 +4,7 @@ import { TYPES, emptySelection, hasSelection, selectGames, holds, focusSeats, ou
 import { communityConfig, communityName, gameCommunity, NONE, DEFAULTS } from './communities.js';
 import { esc, pct, cap, plural, fmtDate, fmtTime, phaseLabel, teamLabel, teamOne, asType, isEvilTeam, playerLink as uiPlayerLink, charLink, typeLink, rateCell, delta, splitBars, legendGE, tile, card, table, pie, rings, rangeBar, fitted } from './ui.js';
 import { renderData, handleDataClick, handleImport } from './dataview.js';
+import { playstylesView, STYLE_SIDES } from './playstylesview.js';
 import { renderGrimoire } from './grimoire.js';
 import { makeImages } from './images.js';
 import { characterToken, installTokenStyle } from './tokens.js';
@@ -22,10 +23,11 @@ const api = {
 };
 
 // ---------- state ----------
-const TABS = ['stats', 'games', 'data'];
+const TABS = ['stats', 'styles', 'games', 'data'];
 const prefs = (() => { try { return JSON.parse(localStorage.getItem('dash.prefs')) || {}; } catch { return {}; } })();
 const state = {
   tab: readTab(),
+  styleSide: readSide(), // Playstyles tab: good, evil or all games
   filters: { communities: Array.isArray(prefs.communities) ? prefs.communities : [], script: '', storyteller: '', days: '' },
   sel: readHash(),
   expanded: new Set(),
@@ -81,6 +83,10 @@ function readTab() {
   const t = new URLSearchParams(location.hash.slice(1)).get('tab');
   return TABS.includes(t) ? t : 'stats';
 }
+function readSide() {
+  const s = new URLSearchParams(location.hash.slice(1)).get('side');
+  return STYLE_SIDES.some(([v]) => v === s) ? s : 'good';
+}
 function readHash() {
   const sel = emptySelection();
   const params = new URLSearchParams(location.hash.slice(1));
@@ -90,6 +96,7 @@ function readHash() {
 function writeHash() {
   const params = new URLSearchParams();
   if (state.tab !== 'stats') params.set('tab', state.tab);
+  if (state.tab === 'styles' && state.styleSide !== 'good') params.set('side', state.styleSide);
   for (const [k, v] of Object.entries(state.sel)) if (v.length) params.set(k, v.join(','));
   history.replaceState(null, '', params.toString() ? `#${params}` : location.pathname);
 }
@@ -965,6 +972,13 @@ function gamesView() {
   return `${summaryLine(G, base, state.sel)}${G.length ? gamesList(G) : '<div class="card empty"><h2>No games match</h2><p>Try removing a filter.</p></div>'}`;
 }
 
+// Playstyles: every player in the filtered games; picked players are highlighted on the map, and characters and
+// types don't apply (their dropdowns are hidden on this tab).
+function stylesView() {
+  if (!state.games.length) return noGames();
+  return playstylesView(baseGames(), { side: state.styleSide, selected: state.sel.players, playerLink, sortable, colPlayer, colNum, colRate });
+}
+
 function statsView() {
   if (!state.games.length) return `<div class="empty card"><h2>No games recorded yet</h2><p>Keep botc.app open in a tab while you play. Each game is saved automatically when the storyteller reveals the grimoire.</p><p class="muted">Already have data? Import it from Data &amp; settings.</p></div>`;
   if (privateNotice()) return privateNotice();
@@ -1118,7 +1132,8 @@ function render() {
   if (gate) { $('#filters').hidden = true; $('#view').innerHTML = signInView(); return; }
   document.querySelectorAll('[data-tab]').forEach((b) => { if (b.closest('.tabs')) b.setAttribute('aria-selected', String(b.dataset.tab === state.tab)); });
   $('#filters').hidden = state.tab === 'data';
-  const views = { stats: statsView, games: gamesView, data: () => renderData(ctx, selectGames(baseGames(), state.sel)) };
+  document.body.classList.toggle('tab-styles', state.tab === 'styles');
+  const views = { stats: statsView, styles: stylesView, games: gamesView, data: () => renderData(ctx, selectGames(baseGames(), state.sel)) };
   keepOpenForms(() => { $('#view').innerHTML = (state.tab !== 'data' ? connectCard() : '') + views[state.tab](); });
   // Editors' account list loads the first time Data & settings is opened.
   mountClaimPicker();
@@ -1365,8 +1380,9 @@ async function updateLocal(id, patch, resend) {
 
 // ---------- events ----------
 document.addEventListener('click', async (e) => {
-  const t = e.target.closest('[data-gview],[data-gmenu],[data-sort-table],[data-filter-community],[data-game-community],[data-add-player],[data-add-char],[data-add-type],[data-expand],[data-more-games],[data-delete],[data-action],[data-export],[data-clear-room],[data-fallback],[data-tab],#clear-sel');
+  const t = e.target.closest('[data-gview],[data-gmenu],[data-sort-table],[data-filter-community],[data-game-community],[data-add-player],[data-add-char],[data-add-type],[data-expand],[data-more-games],[data-delete],[data-action],[data-export],[data-clear-room],[data-fallback],[data-tab],[data-style-side],#clear-sel');
   if (!t) return;
+  if (t.dataset.styleSide) { state.styleSide = t.dataset.styleSide; writeHash(); render(); return; }
   // Under an open game: switch between seat-by-seat and nominations, or show the settings. No full redraw,
   // so the grimoire stays put.
   // The settings take the place of the table; picking a tab puts the table back.
@@ -1485,7 +1501,7 @@ document.addEventListener('mousemove', (e) => {
   tip.style.top = `${y}px`;
 });
 
-window.addEventListener('hashchange', () => { state.sel = readHash(); state.tab = readTab(); renderPickers(); render(); });
+window.addEventListener('hashchange', () => { state.sel = readHash(); state.tab = readTab(); state.styleSide = readSide(); renderPickers(); render(); });
 
 // Make sure botc.app's image list is available (fetched in the background if missing or a day old);
 // the dashboard re-renders when it arrives.

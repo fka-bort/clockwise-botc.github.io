@@ -45,7 +45,7 @@ The character, alignment and winner data comes from the end-of-game reveal, whic
 
 The look follows the Mayor-Baron Type Indicator: warm parchment, cream cards with large rounded corners, and plum text, with Fraunces titles and Figtree text (both bundled, so it works offline). Good is shown in its Townsfolk blue and evil in its Minion rust. Tabs sit in a pill bar at the top right, and the filters sit in one row in the same pill style. Once you set a filter, a short summary of what you are looking at appears above the row of cards, with the most interesting card highlighted in mauve. It fills the window up to 1440px wide and stays centered on bigger screens. It uses a dark theme by default, on a tiled purple texture that runs behind the header too. Click the Clockwise logo to go back to the main page.
 
-The dashboard has three tabs: **Stats** (the default), **Games** and **Data & settings**.
+The dashboard has four tabs: **Stats** (the default), **Playstyles**, **Games** and **Data & settings**.
 
 ### Stats
 
@@ -75,6 +75,14 @@ Pick anything to focus the page on it. Every name on the page is clickable and a
   - A character plus a type shows that type in games with the character, e.g. *Outsiders when the Baron is in play*.
 
 Every table can be sorted: click a column label to sort by it (▼), click it again to flip the order (▲), or click another column to sort by that instead. The **Community** buttons at the top start with neither on, which shows every recorded game. Turn on Escape, Rhap or both to see only those games. The dashboard remembers your choice. The script, storyteller and period filters narrow everything too. **See these games →** at the bottom jumps to the matching games. The tab and selection are saved in the page address, so you can bookmark a view.
+
+### Playstyles
+
+The Playstyles tab looks at how each player's games tend to go, as good, as evil or across all games (toggle at the top right). The script, storyteller, period and community filters apply; players picked in the Players filter are highlighted on the map.
+
+- **How their games end:** every seat gets one fate: killed early (at night or by an ability, by the end of Day 2), executed early (Day 1 or 2), died later on, executed on the final day (as good in a game evil won, that's the frame), survived and lost, or survived and won. Each player's mix is a bar, with everyone's mix on top.
+- **Player map and playstyles:** each player with enough games (5 as good, 3 as evil) gets a few rates: killed early, executed early, executed on the final day, survived, win rate, nominations per game, how often their nominations land on evil and get the other team executed. Rates are pulled toward the table-wide rate as if each player had 5 extra average games, so a few lucky games can't make someone look extreme. k-means then groups players who look alike (2–4 groups, whichever split is clearest by silhouette), and each group is named after what sets it apart most: *Lightning rod*, *Survivor*, *Hound dog*, *The framer*, *Quiet one* and so on. The map places players with PCA, so players close together play alike.
+- **Hound dogs / Framers:** whose nominations get the other team executed, plus (as good) how often their nominations and votes land on evil. Only games recorded from the start count here.
 
 ### Games
 
@@ -150,6 +158,8 @@ extension/
   src/communities.js   which community a room/game belongs to
   src/stats.js         filters and overall win-rate calculations
   src/insights.js      stats for any selection of players / characters / types, and the prediction model
+  src/playstyles.js    how each player's games end, nominations, and the playstyle groups (k-means + PCA)
+  src/playstylesview.js  the Playstyles tab
   src/ui.js            shared HTML helpers
   src/dataview.js      Data & settings page
   src/tables.js        CSV / Sheets table layout
